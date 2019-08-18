@@ -15,12 +15,11 @@ namespace Drt.Csv
     {
         private bool _disposed = false;
 
-        private StreamReader _reader;
+        private readonly StreamReader _reader;
         private string _currLine;
         private int _currPos;
-        private EmptyLineBehavior _emptyLineBehavior;
+        private readonly EmptyLineBehavior _emptyLineBehavior;
 
-        /// <param name="emptyLineBehavior"></param>
         /// <summary>
         /// class voor het lezen van csv files.
         /// Een eventuele header regel wordt niet anders anders behandeld dan de rest van de csvfile.
@@ -66,11 +65,11 @@ namespace Drt.Csv
 
             // Parse line
             var cells = new List<string>();
-            string cel;
             int numCells = 0;
             _currPos = 0;
             while (true)
             {
+                string cel;
                 // Read next cell
                 if (_currPos < _currLine.Length && _currLine[_currPos] == Quote)
                     cel = ReadQuotedCell();
