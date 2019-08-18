@@ -291,5 +291,29 @@ namespace Drt.Business.Test
                 Assert.AreEqual(string.Empty, values[0]);
             }
         }
+
+        [TestMethod]
+        public void CsvBadSingleQuote()
+        {
+            using (var sr = new StreamReader(@"BadSingleQuote.csv"))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.EmptyCell))
+            {
+                var values = csvr.ReadRow();  // header
+
+                values = csvr.ReadRow();      // rij 1
+                Assert.IsNotNull(values);
+                Assert.AreEqual(3, values.Count);
+                Assert.AreEqual("Row1A", values[0]);
+                Assert.AreEqual("Row\"1B", values[1]);
+                Assert.AreEqual("Row1C", values[2]);
+
+                values = csvr.ReadRow();      // rij 2
+                Assert.IsNotNull(values);
+                Assert.AreEqual(3, values.Count);
+                Assert.AreEqual("Row2A", values[0]);
+                Assert.AreEqual("Row\"\r\n2B", values[1]);
+                Assert.AreEqual("Row2C", values[2]);
+            }
+        }
     }
 }

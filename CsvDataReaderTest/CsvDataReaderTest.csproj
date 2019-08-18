@@ -76,6 +76,7 @@
     <None Include="Testdata\OnlyHeader.csv" />
     <None Include="Testdata\Multiline.csv" />
     <None Include="Testdata\EmptyLine.csv" />
+    <None Include="Testdata\BadSingleQuote.csv" />
     <None Include="Testdata\Simple.csv" />
     <None Include="Testdata\SomeEmptyValues.csv" />
     <None Include="Testdata\Tab.csv" />
