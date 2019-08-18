@@ -163,45 +163,50 @@ namespace Drt.Csv
             _currPos++;
 
             // Parse cell
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
             while (true)
             {
-                if (_currPos == _currLine.Length)
+                // zoek de eerstvolgende quote
+                int quotePos = _currLine.IndexOf(Quote, _currPos);
+                if (quotePos == -1)
                 {
-                    // End of line so attempt to read the next line
+                    // quote niet gevonden: ...\r\n
+                    string s = _currLine.Substring(_currPos, _currLine.Length - _currPos);
+                    builder.Append(s);
+                    builder.Append(Environment.NewLine);
                     _currLine = _reader.ReadLine();
                     _currPos = 0;
-                    // Done if we reached the end of the file
-                    if (_currLine == null)
-                        return builder.ToString();
-                    // Otherwise, treat as a multi-line field
-                    builder.Append(Environment.NewLine);
                 }
-
-                // Test for quote character
-                if (_currLine[_currPos] == Quote)
+                else if (quotePos + 1 == _currLine.Length)
                 {
-                    // If two quotes, skip first and treat second as literal
-                    int nextPos = _currPos + 1;
-                    if (nextPos < _currLine.Length && _currLine[nextPos] == Quote)
-                        _currPos++;
-                    else
-                        break;  // Single quote ends quoted sequence
+                    // quote aan het einde van de regel: ...."\r\n
+                    string s = _currLine.Substring(_currPos, quotePos - _currPos);
+                    builder.Append(s);
+                    _currPos = _currLine.Length;
+                    return builder.ToString();
                 }
-                // Add current character to the cell
-                builder.Append(_currLine[_currPos++]);
-            }
+                else if (_currLine[quotePos + 1] == Quote)
+                {
+                    // dubbele quote:  ...""...
+                    quotePos++;
+                    string s = _currLine.Substring(_currPos, quotePos - _currPos);
+                    builder.Append(s);
+                    _currPos = quotePos + 1;
+                }
+                else if (_currLine[quotePos + 1] == Delimiter)
+                {
+                    // einde deze cel:  ...";...
+                    string s = _currLine.Substring(_currPos, quotePos - _currPos);
+                    builder.Append(s);
+                    _currPos = quotePos + 1;
+                    return builder.ToString();
+                }
+                else
+                {
+                    // een losse enkele quote, slecht nieuws: ..."....
 
-            if (_currPos < _currLine.Length)
-            {
-                // Consume closing quote
-                Debug.Assert(_currLine[_currPos] == Quote);
-                _currPos++;
-                // Append any additional characters appearing before next delimiter
-                builder.Append(ReadUnquotedCell());
+                }
             }
-            // Return cell value
-            return builder.ToString();
         }
 
         /// <summary>
