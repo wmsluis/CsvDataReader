@@ -13,44 +13,49 @@ namespace Drt.Csv
     /// </summary>
     public class CsvFileReader : CsvFileCommon, IDisposable
     {
-        // Private members
-        private StreamReader Reader;
-        private string CurrLine;
-        private int CurrPos;
-        private EmptyLineBehavior EmptyLineBehavior;
+        private bool _disposed = false;
 
+        private StreamReader _reader;
+        private string _currLine;
+        private int _currPos;
+        private EmptyLineBehavior _emptyLineBehavior;
+
+        /// <param name="emptyLineBehavior"></param>
         /// <summary>
-        /// Initializes a new instance of the CsvFileReader class for the
-        /// specified stream.
+        /// class voor het lezen van csv files.
+        /// Een eventuele header regel wordt niet anders anders behandeld dan de rest van de csvfile.
+        /// Tekstvelden mogen tussen een quote karakter gezet worden, codeer een quote karakter daarbinnen met behulp van twee quotes achter elkaar.
         /// </summary>
-        /// <param name="stream">The stream to read from</param>
-        /// <param name="emptyLineBehavior">Determines how empty lines are handled</param>
-        public CsvFileReader(StreamReader stream, char fieldDelimiter = ';', char quote = '"', EmptyLineBehavior emptyLineBehavior = EmptyLineBehavior.NoColumns) :
+        /// <param name="stream">De invoer stream</param>
+        /// <param name="fieldDelimiter">Typisch gesproken een puntkomma, een komma of een tab </param>
+        /// <param name="quote">Wordt gebruikt om een tekstveld mee te omgeven, zodat speciale karakters gewoon als tekst worden geinterpretterd.</param>
+        /// <param name="emptyLineBehavior">Bepaalt hoe je met lege regels in de invoer moet omgaan</param>
+        public CsvFileReader(StreamReader stream, char fieldDelimiter = ';', char quote = '"', EmptyLineBehavior emptyLineBehavior = EmptyLineBehavior.NoCells) :
             base(fieldDelimiter, quote)
         {
-            Reader = stream;
-            EmptyLineBehavior = emptyLineBehavior;
+            _reader = stream;
+            _emptyLineBehavior = emptyLineBehavior;
         }
 
         /// <summary>
-        /// Reads a row of columns from the current CSV file. Returns false if no
-        /// more data could be read because the end of the file was reached.
+        /// Lees een regel van de stream en breek deze op in cellen die we teruggeven
+        /// Let op: aan het einde van de file geven we een null collectie terug.
         /// </summary>
-        /// <param name="columns">Collection to hold the columns read</param>
         public List<string> ReadRow()
         {
             // Read next line from the file
-            CurrLine = Reader.ReadLine();
-            CurrPos = 0;
+            _currLine = _reader.ReadLine();
+
             // Test for end of file
-            if (CurrLine == null)
+            if (_currLine == null)
                 return null;
+
             // Test for empty line
-            if (CurrLine.Length == 0)
+            if (_currLine.Length == 0)
             {
-                switch (EmptyLineBehavior)
+                switch (_emptyLineBehavior)
                 {
-                    case EmptyLineBehavior.NoColumns:
+                    case EmptyLineBehavior.NoCells:
                         return new List<string>();
                     case EmptyLineBehavior.Ignore:
                         return ReadRow();
@@ -60,111 +65,127 @@ namespace Drt.Csv
             }
 
             // Parse line
-            var columns = new List<string>();
-            string column;
-            int numColumns = 0;
+            var cells = new List<string>();
+            string cel;
+            int numCells = 0;
+            _currPos = 0;
             while (true)
             {
-                // Read next column
-                if (CurrPos < CurrLine.Length && CurrLine[CurrPos] == Quote)
-                    column = ReadQuotedColumn();
+                // Read next cell
+                if (_currPos < _currLine.Length && _currLine[_currPos] == Quote)
+                    cel = ReadQuotedCell();
                 else
-                    column = ReadUnquotedColumn();
-                // Add column to list
-                if (numColumns < columns.Count)
-                    columns[numColumns] = column;
+                    cel = ReadUnquotedCell();
+
+                // Add cell to list
+                if (numCells < cells.Count)
+                    cells[numCells] = cel;
                 else
-                    columns.Add(column);
-                numColumns++;
+                    cells.Add(cel);
+                numCells++;
+
                 // Break if we reached the end of the line
-                if (CurrLine == null || CurrPos == CurrLine.Length)
+                if (_currLine == null || _currPos == _currLine.Length)
                     break;
                 // Otherwise skip delimiter
-                Debug.Assert(CurrLine[CurrPos] == Delimiter);
-                CurrPos++;
+                Debug.Assert(_currLine[_currPos] == Delimiter);
+                _currPos++;
             }
-            // Remove any unused columns from collection
-            if (numColumns < columns.Count)
-                columns.RemoveRange(numColumns, columns.Count - numColumns);
+
+            // Remove any unused cells from collection
+            if (numCells < cells.Count)
+                cells.RemoveRange(numCells, cells.Count - numCells);
+
             // Indicate success
-            return columns;
+            return cells;
         }
 
         /// <summary>
-        /// Reads a quoted column by reading from the current line until a
+        /// Reads a quoted cell by reading from the current line until a
         /// closing quote is found or the end of the file is reached. On return,
         /// the current position points to the delimiter or the end of the last
         /// line in the file. Note: CurrLine may be set to null on return.
         /// </summary>
-        private string ReadQuotedColumn()
+        private string ReadQuotedCell()
         {
             // Skip opening quote character
-            Debug.Assert(CurrPos < CurrLine.Length && CurrLine[CurrPos] == Quote);
-            CurrPos++;
+            Debug.Assert(_currPos < _currLine.Length && _currLine[_currPos] == Quote);
+            _currPos++;
 
-            // Parse column
+            // Parse cell
             StringBuilder builder = new StringBuilder();
             while (true)
             {
-                while (CurrPos == CurrLine.Length)
+                while (_currPos == _currLine.Length)
                 {
                     // End of line so attempt to read the next line
-                    CurrLine = Reader.ReadLine();
-                    CurrPos = 0;
+                    _currLine = _reader.ReadLine();
+                    _currPos = 0;
                     // Done if we reached the end of the file
-                    if (CurrLine == null)
+                    if (_currLine == null)
                         return builder.ToString();
                     // Otherwise, treat as a multi-line field
                     builder.Append(Environment.NewLine);
                 }
 
                 // Test for quote character
-                if (CurrLine[CurrPos] == Quote)
+                if (_currLine[_currPos] == Quote)
                 {
                     // If two quotes, skip first and treat second as literal
-                    int nextPos = (CurrPos + 1);
-                    if (nextPos < CurrLine.Length && CurrLine[nextPos] == Quote)
-                        CurrPos++;
+                    int nextPos = (_currPos + 1);
+                    if (nextPos < _currLine.Length && _currLine[nextPos] == Quote)
+                        _currPos++;
                     else
                         break;  // Single quote ends quoted sequence
                 }
-                // Add current character to the column
-                builder.Append(CurrLine[CurrPos++]);
+                // Add current character to the cell
+                builder.Append(_currLine[_currPos++]);
             }
 
-            if (CurrPos < CurrLine.Length)
+            if (_currPos < _currLine.Length)
             {
                 // Consume closing quote
-                Debug.Assert(CurrLine[CurrPos] == Quote);
-                CurrPos++;
+                Debug.Assert(_currLine[_currPos] == Quote);
+                _currPos++;
                 // Append any additional characters appearing before next delimiter
-                builder.Append(ReadUnquotedColumn());
+                builder.Append(ReadUnquotedCell());
             }
-            // Return column value
+            // Return cell value
             return builder.ToString();
         }
 
         /// <summary>
-        /// Reads an unquoted column by reading from the current line until a
+        /// Reads an unquoted cell by reading from the current line until a
         /// delimiter is found or the end of the line is reached. On return, the
         /// current position points to the delimiter or the end of the current
         /// line.
         /// </summary>
-        private string ReadUnquotedColumn()
+        private string ReadUnquotedCell()
         {
-            int startPos = CurrPos;
-            CurrPos = CurrLine.IndexOf(Delimiter, CurrPos);
-            if (CurrPos == -1)
-                CurrPos = CurrLine.Length;
-            if (CurrPos > startPos)
-                return CurrLine.Substring(startPos, CurrPos - startPos);
+            int startPos = _currPos;
+            _currPos = _currLine.IndexOf(Delimiter, _currPos);
+            if (_currPos == -1)
+                _currPos = _currLine.Length;
+            if (_currPos > startPos)
+                return _currLine.Substring(startPos, _currPos - startPos);
             return String.Empty;
         }
 
-        // Propagate Dispose to StreamReader
         public void Dispose()
         {
-            Reader.Dispose();
+            this.Dispose(true);
+            System.GC.SuppressFinalize(this);
+        }
+
+        public void Dispose(bool disposing)
+        {
+            if (_disposed)
+                return;
+
+            if (disposing)
+                _reader.Dispose();
+
+            _disposed = true;
         }
     }
 

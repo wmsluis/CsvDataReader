@@ -261,7 +261,7 @@ namespace Drt.Business.Test
         public void CsvEmptyLineGeeftLegeCollectie()
         {
             using (var sr = new StreamReader(@"Emptyline.csv"))
-            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.NoColumns))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.NoCells))
             {
                 var values = csvr.ReadRow();  // header
                 values = csvr.ReadRow();  // rij 1
@@ -278,7 +278,7 @@ namespace Drt.Business.Test
         public void CsvEmptyLineGeeftCollectieMetEnkeleKolom()
         {
             using (var sr = new StreamReader(@"Emptyline.csv"))
-            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.EmptyColumn))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.EmptyCell))
             {
                 var values = csvr.ReadRow();  // header
                 values = csvr.ReadRow();  // rij 1

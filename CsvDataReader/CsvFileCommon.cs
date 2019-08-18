@@ -16,13 +16,13 @@ namespace Drt.Csv
     public enum EmptyLineBehavior
     {
         /// <summary>
-        /// Empty lines are interpreted as a line with zero columns.
+        /// Empty lines are interpreted as a line with zero cells.
         /// </summary>
-        NoColumns,
+        NoCells,
         /// <summary>
-        /// Empty lines are interpreted as a line with a single empty column.
+        /// Empty lines are interpreted as a line with a single empty cell.
         /// </summary>
-        EmptyColumn,
+        EmptyCell,
         /// <summary>
         /// Empty lines are skipped over as though they did not exist.
         /// </summary>
@@ -45,8 +45,8 @@ namespace Drt.Csv
         }
 
         /// <summary>
-        /// These are special characters in CSV files. If a column contains any
-        /// of these characters, the entire column is wrapped in double quotes.
+        /// These are special characters in CSV files. If a cell contains any
+        /// of these characters, the entire cell is wrapped in double quotes.
         /// </summary>
         protected char[] SpecialChars = new char[] { ';', '"', '\r', '\n' };
 
@@ -55,7 +55,7 @@ namespace Drt.Csv
         private const int QuoteIndex = 1;
 
         /// <summary>
-        /// Gets/sets the character used for column delimiters.
+        /// Gets/sets the character used for cell delimiters.
         /// </summary>
         public char Delimiter
         {
@@ -64,7 +64,7 @@ namespace Drt.Csv
         }
 
         /// <summary>
-        /// Gets/sets the character used for column quotes.
+        /// Gets/sets the character used for cell quotes.
         /// </summary>
         public char Quote
         {
