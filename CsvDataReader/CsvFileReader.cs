@@ -15,10 +15,16 @@ namespace Drt.Csv
     {
         private bool _disposed = false;
 
+        private delegate ToestandsFunctie ToestandsFunctie();
+
         private readonly StreamReader _reader;
         private string _currLine;
         private int _currPos;
         private readonly EmptyLineBehavior _emptyLineBehavior;
+
+        // gebruikt door toestandsfuncties
+        private List<string> _cells;
+        private int _numCells;
 
         /// <summary>
         /// class voor het lezen van csv files.
@@ -42,7 +48,19 @@ namespace Drt.Csv
         /// </summary>
         public List<string> ReadRow()
         {
+            ToestandsFunctie toestand = LeesRegel;
+            while (toestand != null)
+            {
+                toestand = toestand();
+            }
+
+            return _cells;
+        }
+
+        private ToestandsFunctie LeesRegel()
+        {
             // Read next line from the file
+            _cells = null;
             _currLine = _reader.ReadLine();
 
             // Test for end of file
@@ -55,49 +73,82 @@ namespace Drt.Csv
                 switch (_emptyLineBehavior)
                 {
                     case EmptyLineBehavior.NoCells:
-                        return new List<string>();
+                        _cells = new List<string>();
+                        return null;
+
+                    case EmptyLineBehavior.EmptyCell:
+                        _cells = new List<string> { string.Empty };
+                        return null;
+
                     case EmptyLineBehavior.Ignore:
-                        return ReadRow();
+                        return LeesRegel;
+
                     case EmptyLineBehavior.EndOfFile:
                         return null;
                 }
             }
 
-            // Parse line
-            var cells = new List<string>();
-            int numCells = 0;
-            _currPos = 0;
-            while (true)
-            {
-                string cel;
-                // Read next cell
-                if (_currPos < _currLine.Length && _currLine[_currPos] == Quote)
-                    cel = ReadQuotedCell();
-                else
-                    cel = ReadUnquotedCell();
-
-                // Add cell to list
-                if (numCells < cells.Count)
-                    cells[numCells] = cel;
-                else
-                    cells.Add(cel);
-                numCells++;
-
-                // Break if we reached the end of the line
-                if (_currLine == null || _currPos == _currLine.Length)
-                    break;
-                // Otherwise skip delimiter
-                Debug.Assert(_currLine[_currPos] == Delimiter);
-                _currPos++;
-            }
-
-            // Remove any unused cells from collection
-            if (numCells < cells.Count)
-                cells.RemoveRange(numCells, cells.Count - numCells);
-
-            // Indicate success
-            return cells;
+            return LeesCellenStart;
         }
+
+        private ToestandsFunctie LeesCellenStart()
+        {
+            _cells = new List<string>();
+            _numCells = 0;
+            _currPos = 0;
+
+            return LeesCel;
+        }
+
+        private ToestandsFunctie LeesCellenEinde()
+        {
+            // Remove any unused cells from collection
+            if (_numCells < _cells.Count)
+                _cells.RemoveRange(_numCells, _cells.Count - _numCells);
+
+            // klaar
+            return null;
+        }
+
+        private ToestandsFunctie LeesCel()
+        {
+            string cel;
+            // Read next cell
+            if (_currPos < _currLine.Length && _currLine[_currPos] == Quote)
+                cel = ReadQuotedCell();
+            else
+                cel = ReadUnquotedCell();
+
+            // Add cell to list
+            if (_numCells < _cells.Count)
+                _cells[_numCells] = cel;
+            else
+                _cells.Add(cel);
+            _numCells++;
+
+            // Break if we reached the end of the line
+            if (_currLine == null || _currPos == _currLine.Length)
+                return LeesCellenEinde;
+
+            // Otherwise skip delimiter
+            Debug.Assert(_currLine[_currPos] == Delimiter);
+            _currPos++;
+
+            return LeesCel;
+        }
+
+        private ToestandsFunctie LeesUnquoted()
+        {
+
+            return LeesCellenStart;
+        }
+
+        private ToestandsFunctie LeesQuoted()
+        {
+
+            return LeesCellenStart;
+        }
+
 
         /// <summary>
         /// Reads a quoted cell by reading from the current line until a
@@ -115,7 +166,7 @@ namespace Drt.Csv
             StringBuilder builder = new StringBuilder();
             while (true)
             {
-                while (_currPos == _currLine.Length)
+                if (_currPos == _currLine.Length)
                 {
                     // End of line so attempt to read the next line
                     _currLine = _reader.ReadLine();
@@ -131,7 +182,7 @@ namespace Drt.Csv
                 if (_currLine[_currPos] == Quote)
                 {
                     // If two quotes, skip first and treat second as literal
-                    int nextPos = (_currPos + 1);
+                    int nextPos = _currPos + 1;
                     if (nextPos < _currLine.Length && _currLine[nextPos] == Quote)
                         _currPos++;
                     else
@@ -165,9 +216,7 @@ namespace Drt.Csv
             _currPos = _currLine.IndexOf(Delimiter, _currPos);
             if (_currPos == -1)
                 _currPos = _currLine.Length;
-            if (_currPos > startPos)
-                return _currLine.Substring(startPos, _currPos - startPos);
-            return String.Empty;
+            return _currLine.Substring(startPos, _currPos - startPos);
         }
 
         public void Dispose()

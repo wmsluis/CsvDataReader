@@ -216,7 +216,7 @@ namespace Drt.Business.Test
 
                 values = csvr.ReadRow(); // Rij 2
                 Assert.IsNotNull(values);
-                CollectionAssert.AreEqual(new List<string> { "Row2A", "Eerste regel\r\nTweede regel", "Q;A" }, values);
+                CollectionAssert.AreEqual(new List<string> { "Row2A", "Eerste regel\r\nTweede regel\r\nDerde regel", "Q;A" }, values);
 
                 values = csvr.ReadRow(); // rij3
                 Assert.IsNotNull(values);
