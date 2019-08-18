@@ -13,8 +13,10 @@ namespace Drt.Csv
     /// </summary>
     public class CsvFileWriter : CsvFileCommon, IDisposable
     {
+        private bool _disposed = false;
+
         // Private members
-        private StreamWriter Writer;
+        private StreamWriter _writer;
         private string OneQuote = null;
         private string TwoQuotes = null;
         private string QuotedFormat = null;
@@ -27,7 +29,7 @@ namespace Drt.Csv
         public CsvFileWriter(StreamWriter stream, char fieldDelimiter = ';', char quote = '"') :
             base(fieldDelimiter, quote)
         {
-            Writer = stream;
+            _writer = stream;
         }
 
         /// <summary>
@@ -53,20 +55,32 @@ namespace Drt.Csv
             {
                 // Add delimiter if this isn't the first column
                 if (i > 0)
-                    Writer.Write(Delimiter);
+                    _writer.Write(Delimiter);
                 // Write this column
                 if (columns[i].IndexOfAny(SpecialChars) == -1)
-                    Writer.Write(columns[i]);
+                    _writer.Write(columns[i]);
                 else
-                    Writer.Write(QuotedFormat, columns[i].Replace(OneQuote, TwoQuotes));
+                    _writer.Write(QuotedFormat, columns[i].Replace(OneQuote, TwoQuotes));
             }
-            Writer.WriteLine();
+            _writer.WriteLine();
+        }
+
+        public void Dispose()
+        {
+            this.Dispose(true);
+            System.GC.SuppressFinalize(this);
         }
 
         // Propagate Dispose to StreamWriter
-        public void Dispose()
+        protected virtual void Dispose(bool disposing)
         {
-            Writer.Dispose();
+            if (_disposed)
+                return;
+
+            if (disposing)
+                _writer.Dispose();
+
+            _disposed = true;
         }
     }
 }

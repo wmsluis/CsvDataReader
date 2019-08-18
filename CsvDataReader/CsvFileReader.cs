@@ -180,8 +180,12 @@ namespace Drt.Csv
                 }
                 else
                 {
-                    // een losse enkele quote, slecht nieuws: ..."....
-                    throw new ArgumentException($"Foutieve quote karakter ({Quote}) op regel {_linenr}: komt niet dubbel voor.");
+                    // een losse enkele quote: ..."....
+                    // dit zou eigenlijk niet mogen. We doen maar alsof deze tweemaal voorkomt...
+                    quotePos++;
+                    string s = _currLine.Substring(_currPos, quotePos - _currPos);
+                    builder.Append(s);
+                    _currPos = quotePos;
                 }
             }
         }
@@ -207,7 +211,7 @@ namespace Drt.Csv
             System.GC.SuppressFinalize(this);
         }
 
-        public void Dispose(bool disposing)
+        protected virtual void Dispose(bool disposing)
         {
             if (_disposed)
                 return;
