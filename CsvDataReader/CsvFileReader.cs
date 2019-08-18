@@ -24,7 +24,6 @@ namespace Drt.Csv
 
         // gebruikt door toestandsfuncties
         private List<string> _cells;
-        private int _linenr;
 
         /// <summary>
         /// class voor het lezen van csv files.
@@ -38,7 +37,6 @@ namespace Drt.Csv
         public CsvFileReader(StreamReader stream, char fieldDelimiter = ';', char quote = '"', EmptyLineBehavior emptyLineBehavior = EmptyLineBehavior.NoCells) :
             base(fieldDelimiter, quote)
         {
-            _linenr = 0;
             _reader = stream;
             _emptyLineBehavior = emptyLineBehavior;
         }
@@ -57,18 +55,13 @@ namespace Drt.Csv
 
             return _cells;
         }
-
-        private string ReadLine()
-        {
-            _linenr++;
-            return _reader.ReadLine();
-        }
-
+        
+        #region Deze functies beschrijven ook een toestand van het parsen van een regel weer
         private ToestandsFunctie LeesRegel()
         {
             // Read next line from the file
             _cells = null;
-            _currLine = ReadLine();
+            _currLine = _reader.ReadLine();
 
             // Test for end of file
             if (_currLine == null)
@@ -88,6 +81,7 @@ namespace Drt.Csv
                         return null;
 
                     case EmptyLineBehavior.Ignore:
+                        // ga door naar de volgende regel
                         return LeesRegel;
 
                     case EmptyLineBehavior.EndOfFile:
@@ -95,10 +89,10 @@ namespace Drt.Csv
                 }
             }
 
-            return LeesCellenStart;
+            return LeesCellen;
         }
 
-        private ToestandsFunctie LeesCellenStart()
+        private ToestandsFunctie LeesCellen()
         {
             _cells = new List<string>();
             _currPos = 0;
@@ -124,8 +118,10 @@ namespace Drt.Csv
             Debug.Assert(_currLine[_currPos] == Delimiter);
             _currPos++;
 
+            // lees de volgende cel
             return LeesCel;
         }
+        #endregion
 
         /// <summary>
         /// Reads a quoted cell by reading from the current line until a
@@ -151,7 +147,7 @@ namespace Drt.Csv
                     string s = _currLine.Substring(_currPos, _currLine.Length - _currPos);
                     builder.Append(s);
                     builder.Append(Environment.NewLine);
-                    _currLine = ReadLine();
+                    _currLine = _reader.ReadLine();
                     _currPos = 0;
                 }
                 else if (quotePos + 1 == _currLine.Length)
