@@ -1,99 +1,61 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
-
 using System.Data;
-using System.IO;
-using System.Text.RegularExpressions;
 
 namespace Drt.Csv
 {
     /// <summary>
-    /// Lees csv files, zonder afhankelijkheden van b.v. office software
-    /// Instelbaar: scheidingskarakter (standaard is de puntkomma) en hoe een leeg veld geinterpreteerd moet worden.
+    /// Lees csv files, zonder afhankelijkheden van b.v. office software.
     /// De class implementeert IDataReader en is dus geschikt om in combinatie met BulkImport te werken.
+    /// De class gebruikt CsvFileReader voor het lezen van de csv file.
     /// N.B. Dit zou een generiek component kunnen zijn.
     /// </summary>
-    public class CsvDataReader : IDataReader, IDisposable
+    public class CsvBulkReader : IDataReader, IDisposable
     {
         private bool _isClosed = false;
         private bool _disposed = false;
 
-        private StreamReader _stream;
-        private string _headerRow;
-        private string[] _headers;
-        private string[] _currentRow;
-        private string _constantValues;
-        private readonly char _delim;
+        private List<string> _headers;
+        private List<string> _currentRow;
+        private List<string> _constantValues;
         private readonly string _empytValue;
-
-        private Regex _delimRegex;
+        private CsvFileReader _csvFileReader;
 
         /// <summary>
         /// Een lezer van csv files, geschikt voor bulkimport.
         /// </summary>
-        /// <param name="stream">StreamReader naar csv file, met juiste Encoding, buffering etc... 
-        /// Is verantwoordelijkheid van de client</param>
-        /// <param name="fieldDelimiter">b.v. een puntkomma (default), een komma of een tab</param>
-        /// <param name="emptyValue">Indien een veldwaarde in de csv file een lege string is, rapporteer dan in de plaats hiervoor deze waarde. 
+        /// <param name="emptyValue">Indien een veldwaarde in de csv file een lege string is, rapporteer dan in de plaats hiervan deze waarde. 
         /// Voor bulk import is dit typisch gesproken null (default).</param>
-        public CsvDataReader(StreamReader stream, char fieldDelimiter = ';', string emptyValue = null)
+        public CsvBulkReader(CsvFileReader csvFileReader, string emptyValue = null)
         {
-            _delim = fieldDelimiter;
-            _constantValues = string.Empty;
+            _constantValues = new List<string>();
             _empytValue = emptyValue;
 
-            // Match de field delimiers (b.v. puntkomma), maar alleen daar waar een regel gesplitst moet worden.
-            // Maatregelen worden genomen om regels niet te splitsen op delimiters die binnen dubbele quotes vallen.
-            // (?=...) is een beetje technisch, zoek de preciese betekenis op in de documentatie. 
-            //     komt erop neer dat de regex na de delimiter nog een stukje doorzoekt (b.v. een stuk tussen dubbele quotes)
-            //     maar dat we dat niet rapporteren als onderdeel van de match result (dat moet nl. alleen de delimiter zijn).
-            _delimRegex = new Regex(_delim + "(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))", RegexOptions.Compiled);
-
-            _stream = stream;
-            _headerRow = _stream.ReadLine();
-            _headers = Split(_headerRow);
+            _csvFileReader = csvFileReader;
+            _headers = new List<string>();
+            _csvFileReader.ReadRow(_headers);
         }
 
+        /// <summary>
+        /// Voeg een nieuwe kolom achteraan toe met voor alle regels steeds een vaste waarde
+        /// </summary>
+        /// <param name="columnHeader"></param>
+        /// <param name="constantValue"></param>
         public void AddConstantColumn(string columnHeader, string constantValue)
         {
-            // voeg de nieuwe kolom achteraan toe
-            _headerRow += $"{_delim}{columnHeader}";
-            _constantValues += $"{_delim}{constantValue}";
-            _headers = Split(_headerRow);
+            _headers.Add(columnHeader);
+            _constantValues.Add(constantValue);
         }
 
         public bool Read()
         {
-            if (_stream == null) return false;
-            if (_stream.EndOfStream) return false;
+            _currentRow = new List<string>();
+            bool result = _csvFileReader.ReadRow(_currentRow);
 
-            string rawRow = _stream.ReadLine();
+            if (_constantValues.Count > 0)
+                _currentRow.AddRange(_constantValues);
 
-            // voeg constante velden toe
-            if (_constantValues.Length > 0)
-                rawRow += _constantValues;
-
-            _currentRow = Split(rawRow);
-
-            return true;
-        }
-
-        private string[] Split(string input)
-        {
-            string[] parts = _delimRegex.Split(input);
-
-            // verwijder mogelijke dubbele quotes aan de uiteinden
-            for (int i = 0; i < parts.Length; i++)
-            {
-                parts[i] = parts[i].Trim('"');
-            }
-            return parts;
-        }
-
-        public char FieldDelimeter
-        {
-            get { return _delim; }
+            return result;
         }
 
         public string EmtpyValue
@@ -113,7 +75,7 @@ namespace Drt.Csv
 
         public int FieldCount
         {
-            get { return _headers.Length; }
+            get { return _headers.Count; }
         }
 
         #region IDataReader
@@ -134,7 +96,7 @@ namespace Drt.Csv
 
         public void Close()
         {
-            _stream.Close();
+            _csvFileReader.Dispose();
             _isClosed = true;
         }
 
@@ -164,16 +126,16 @@ namespace Drt.Csv
 
         public int GetValues(object[] values)
         {
-            for (int i = 0; i < _headers.Length; i++)
+            for (int i = 0; i < _headers.Count; i++)
             {
                 values[i] = GetValue(i);
             }
-            return _headers.Length;
+            return _headers.Count;
         }
 
         public int GetOrdinal(string name)
         {
-            for (int i = 0; i < _headers.Length; i++)
+            for (int i = 0; i < _headers.Count; i++)
             {
                 if (string.Equals(_headers[i], name, StringComparison.OrdinalIgnoreCase))
                 {
@@ -209,7 +171,7 @@ namespace Drt.Csv
                 return;
 
             if (disposing)
-                _stream.Dispose();
+                _csvFileReader.Dispose();
 
             _disposed = true;
         }

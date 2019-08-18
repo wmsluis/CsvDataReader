@@ -11,16 +11,20 @@ namespace Drt.Business.Test
     public class CsvDataReaderTests
     {
         [TestMethod]
-        public void SimpleOpen()
+        public void BulkBulkSimpleOpen()
         {
-            var reader = new CsvDataReader(new StreamReader(@"Simple.csv"));
+            var sr = new StreamReader(@"Simple.csv");
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             reader.Dispose();
         }
 
         [TestMethod]
-        public void OpenAndClose()
+        public void BulkBulkOpenAndClose()
         {
-            var reader = new CsvDataReader(new StreamReader((@"Simple.csv")));
+            var sr = new StreamReader(@"Simple.csv");
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             Assert.AreEqual(reader.IsClosed, false);
             reader.Close();
             Assert.AreEqual(reader.IsClosed, true);
@@ -28,9 +32,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void HeadersParse()
+        public void BulkBulkHeadersParse()
         {
-            var reader = new CsvDataReader(new StreamReader((@"Simple.csv")));
+            var sr = new StreamReader(@"Simple.csv");
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             Assert.AreEqual(0, reader.GetOrdinal("Header1"));
             Assert.AreEqual(1, reader.GetOrdinal("Header2"));
             Assert.AreEqual(2, reader.GetOrdinal("Header3"));
@@ -38,10 +44,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void CaseInsensitiveColumnNames()
+        public void BulkBulkCaseInsensitiveColumnNames()
         {
-            var sr = new StreamReader((@"Simple.csv"));
-            var reader = new CsvDataReader(sr);
+            var sr = new StreamReader(@"Simple.csv");
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             Assert.AreEqual(0, reader.GetOrdinal("header1"));
             Assert.AreEqual(1, reader.GetOrdinal("HEADER2"));
             Assert.AreEqual(2, reader.GetOrdinal("HeaDER3"));
@@ -50,10 +57,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void ReadAllRows()
+        public void BulkBulkReadAllRows()
         {
-            var sr = new StreamReader((@"Simple.csv"));
-            var reader = new CsvDataReader(sr);
+            var sr = new StreamReader(@"Simple.csv");
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             while (reader.Read())
             {
             }
@@ -62,11 +70,13 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void GetValue()
+        public void BulkBulkGetValue()
         {
             var sr = new StreamReader(@"Simple.csv");
-            var reader = new CsvDataReader(sr);
-            reader.Read();
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
+            bool result1 = reader.Read();
+            Assert.IsTrue(result1);
             Assert.AreEqual("Row1A", reader.GetValue(0));
             Assert.AreEqual("Row1B", reader.GetValue(1));
             Assert.AreEqual("Row1A", reader[0]);
@@ -77,10 +87,12 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void CommaSeperated()
+        public void BulkBulkCommaSeperated()
         {
             var sr = new StreamReader(@"Comma.csv");
-            var reader = new CsvDataReader(sr, fieldDelimiter: ',');
+            var csvr = new CsvFileReader(sr, fieldDelimiter : ',');
+            var reader = new CsvBulkReader(csvr);
+
             reader.Read();
             Assert.AreEqual("Row1A", reader.GetValue(0));
             Assert.AreEqual("Row1B", reader.GetValue(1));
@@ -92,10 +104,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void TabSeperated()
+        public void BulkBulkTabSeperated()
         {
             var sr = new StreamReader(@"Tab.csv");
-            var reader = new CsvDataReader(sr, fieldDelimiter: '\t');
+            var csvr = new CsvFileReader(sr, fieldDelimiter : '\t');
+            var reader = new CsvBulkReader(csvr);
             reader.Read();
             Assert.AreEqual("Row1A", reader.GetValue(0));
             Assert.AreEqual("Row1B", reader.GetValue(1));
@@ -107,62 +120,77 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void FieldCount()
+        public void BulkBulkFieldCount()
         {
             var sr = new StreamReader(@"Simple.csv");
-            var reader = new CsvDataReader(sr);
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             Assert.AreEqual(3, reader.FieldCount);
             reader.Dispose();
         }
 
         [TestMethod]
-        public void EmbeddedComma()
+        public void BulkBulkEmbeddedComma()
         {
             var sr = new StreamReader(@"Simple.csv");
-            var reader = new CsvDataReader(sr);
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             reader.Read();
             reader.Read();
-            Assert.AreEqual(reader.GetValue(0).ToString(), "Quotes");
-            string v1 = reader.GetValue(2).ToString();
-            string expected = "Q;A";
-            Assert.AreEqual(expected, v1);
+            Assert.AreEqual("Q;A", reader.GetValue(2));
             reader.Dispose();
-
         }
+
         [TestMethod]
-        public void GetName()
+        public void BulkBulkEmbeddedQuote()
         {
             var sr = new StreamReader(@"Simple.csv");
-            var reader = new CsvDataReader(sr);
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
+            reader.Read();
+            reader.Read();
+            Assert.AreEqual(reader.GetValue(1), "Embedded \" Quote");
+            reader.Dispose();
+        }
+
+        [TestMethod]
+        public void BulkBulkGetName()
+        {
+            var sr = new StreamReader(@"Simple.csv");
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             Assert.AreEqual("Header1", reader.GetName(0));
             reader.Dispose();
         }
 
         [TestMethod]
-        public void GetOrdinal()
+        public void BulkBulkGetOrdinal()
         {
             var sr = new StreamReader(@"Simple.csv");
-            var reader = new CsvDataReader(sr);
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             Assert.AreEqual(0, reader.GetOrdinal("Header1"));
             reader.Dispose();
         }
 
         [TestMethod()]
         [ExpectedException(typeof(IndexOutOfRangeException), "The column ZZZZ could not be found in the results")]
-        public void GetOrdinalFailure()
+        public void BulkBulkGetOrdinalFailure()
         {
             using (var sr = new StreamReader(@"Simple.csv"))
-            using (var reader = new CsvDataReader(sr))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
                 int i = reader.GetOrdinal("ZZZZ");
             }
         }
 
         [TestMethod]
-        public void AddStaticValue()
+        public void BulkBulkAddStaticValue()
         {
             var sr = new StreamReader(@"Simple.csv");
-            var reader = new CsvDataReader(sr);
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             reader.AddConstantColumn("Column1", "Value");
 
             Assert.AreEqual(3, reader.GetOrdinal("Column1"));
@@ -175,10 +203,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void TwoStaticColumns()
+        public void BulkTwoStaticColumns()
         {
             var sr = new StreamReader(@"Simple.csv");
-            var reader = new CsvDataReader(sr);
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             reader.AddConstantColumn("Column1", "Value");
             reader.AddConstantColumn("ColumnZ", "FileName");
 
@@ -192,10 +221,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void DisposeReader()
+        public void BulkDisposeReader()
         {
             var sr = new StreamReader(@"Simple.csv");
-            var reader = new CsvDataReader(sr);
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             Assert.AreEqual(reader.IsClosed, false);
             reader.Close();
             reader.Dispose();
@@ -203,10 +233,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void MoveFile()
+        public void BulkMoveFile()
         {
             var sr = new StreamReader(@"Move.csv");
-            var reader = new CsvDataReader(sr);
+            var csvr = new CsvFileReader(sr);
+            var reader = new CsvBulkReader(csvr);
             Assert.AreEqual(reader.IsClosed, false);
             reader.Close();
             Assert.AreEqual(reader.IsClosed, true);
@@ -217,10 +248,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void MoveFileUsing()
+        public void BulkMoveFileUsing()
         {
             using (var sr = new StreamReader(@"Move.csv"))
-            using (var reader = new CsvDataReader(sr))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
                 Assert.AreEqual(reader.IsClosed, false);
                 reader.Close();
@@ -232,10 +264,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void OnlyHeadersParse()
+        public void BulkOnlyHeadersParse()
         {
             using (var sr = new StreamReader(@"OnlyHeader.csv"))
-            using (var reader = new CsvDataReader(sr))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
                 Assert.AreEqual(0, reader.GetOrdinal("Header1"));
                 Assert.AreEqual(1, reader.GetOrdinal("Header2"));
@@ -246,24 +279,32 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void EmptyValuesAsNull()
+        public void BulkEmptyValuesAsNull()
         {
             using (var sr = new StreamReader(@"SomeEmptyValues.csv"))
-            using (var reader = new CsvDataReader(sr))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
-                reader.Read();
-                reader.Read();
+                bool result1 = reader.Read();
+                Assert.IsTrue(result1);
+
+                bool result2 = reader.Read();
+                Assert.IsTrue(result2);
                 Assert.AreEqual("Quotes", reader.GetValue(0));
                 Assert.AreEqual(null, reader.GetValue(1));
                 Assert.AreEqual("Q;A", reader.GetValue(2));
+
+                bool result3 = reader.Read();
+                Assert.IsFalse(result3);
             }
         }
 
         [TestMethod]
-        public void EmptyValuesAsString()
+        public void BulkEmptyValuesAsString()
         {
             using (var sr = new StreamReader(@"SomeEmptyValues.csv"))
-            using (var reader = new CsvDataReader(sr, emptyValue: ""))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr, emptyValue: ""))
             {
                 reader.Read();
                 reader.Read();
@@ -274,10 +315,11 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        public void LongLines()
+        public void BulkLongLines()
         {
             using (var sr = new StreamReader(@"LinetooLong.csv"))
-            using (var reader = new CsvDataReader(sr))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
                 reader.Read();
                 Assert.AreEqual("Row1A", reader.GetValue(0));
@@ -291,11 +333,12 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        [ExpectedException(typeof(IndexOutOfRangeException), "Regl 1 is te kort en heeft geen waarde voor de derde kolom")]
-        public void LinesTooShort()
+        [ExpectedException(typeof(ArgumentOutOfRangeException), "Regl 1 is te kort en heeft geen waarde voor de derde kolom")]
+        public void BulkLinesTooShort()
         {
             using (var sr = new StreamReader(@"LinetooShort.csv"))
-            using (var reader = new CsvDataReader(sr))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
                 reader.Read();
                 Assert.AreEqual("Row1A", reader[0]);
@@ -306,11 +349,12 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        [ExpectedException(typeof(IndexOutOfRangeException), "Regl 1 is te kort en heeft geen waarde voor de derde kolom")]
-        public void LinesTooShortByName()
+        [ExpectedException(typeof(ArgumentOutOfRangeException), "Regl 1 is te kort en heeft geen waarde voor de derde kolom")]
+        public void BulkLinesTooShortByName()
         {
             using (var sr = new StreamReader(@"LinetooShort.csv"))
-            using (var reader = new CsvDataReader(sr))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
                 reader.Read();
                 Assert.AreEqual("Row1A", reader["Header1"]);
@@ -322,11 +366,12 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
-        [ExpectedException(typeof(IndexOutOfRangeException), "Regl 1 is te kort en heeft geen waarde voor de derde kolom")]
-        public void LinesTooShortWithAddedConstant()
+        [ExpectedException(typeof(ArgumentOutOfRangeException), "Regl 1 is te kort en heeft geen waarde voor de derde kolom")]
+        public void BulkLinesTooShortWithAddedConstant()
         {
             using (var sr = new StreamReader(@"LinetooShort.csv"))
-            using (var reader = new CsvDataReader(sr))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
                 reader.AddConstantColumn("NewColumn", "1000");
                 reader.Read();
@@ -337,6 +382,19 @@ namespace Drt.Business.Test
                 Assert.Fail("mag hier niet komen");
             }
         }
+
+        [TestMethod]
+        public void BulkEmptyFile()
+        {
+            using (var sr = new StreamReader(@"Empty.csv"))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
+            {
+                bool result = reader.Read();
+                Assert.IsFalse(result);
+            }
+        }
+
 
     }
 }

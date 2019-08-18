@@ -41,7 +41,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CsvDataReader.cs" />
+    <Compile Include="CsvFileWriter.cs" />
+    <Compile Include="CsvFileCommon.cs" />
+    <Compile Include="CsvFileReader.cs" />
+    <Compile Include="CsvBulkReader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -57,7 +57,8 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="CsvDataReaderTest.cs" />
+    <Compile Include="CsvFileReaderTest.cs" />
+    <Compile Include="CsvBulkReaderTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -68,10 +69,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Testdata\Comma.csv" />
+    <None Include="Testdata\Empty.csv" />
     <None Include="Testdata\LineTooLong.csv" />
     <None Include="Testdata\LineTooShort.csv" />
     <None Include="Testdata\Move.csv" />
     <None Include="Testdata\OnlyHeader.csv" />
+    <None Include="Testdata\Multiline.csv" />
     <None Include="Testdata\Simple.csv" />
     <None Include="Testdata\SomeEmptyValues.csv" />
     <None Include="Testdata\Tab.csv" />
