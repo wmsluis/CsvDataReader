@@ -1,58 +1,66 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 using System.Data;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace SqlUtilities
+namespace Drt.Csv
 {
+    /// <summary>
+    /// Lees csv files, zonder afhankelijkheden van b.v. office software
+    /// Instelbaar: scheidingskarakter (standaard is de puntkomma) en hoe een leeg veld geinterpreteerd moet worden.
+    /// De class implementeert IDataReader en is dus geschikt om in combinatie met BulkImport te werken.
+    /// N.B. Dit zou een generiek component kunnen zijn.
+    /// </summary>
     public class CsvDataReader : IDataReader, IDisposable
     {
-        // The DataReader should always be open when returned to the user.
         private bool _isClosed = false;
-
         private bool _disposed = false;
 
         private StreamReader _stream;
+        private string _headerRow;
         private string[] _headers;
         private string[] _currentRow;
-        private string _staticValues = "";
+        private string _constantValues;
+        private readonly char _delim;
+        private readonly string _empytValue;
 
-        // This should match strings and strings that
-        // have quotes around them and include embedded commas
-        private Regex _CsvRegex = new Regex(",(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))", RegexOptions.Compiled);
+        private Regex _delimRegex;
 
-        public CsvDataReader(string fileName)
+        /// <summary>
+        /// Een lezer van csv files, geschikt voor bulkimport.
+        /// </summary>
+        /// <param name="stream">StreamReader naar csv file, met juiste Encoding, buffering etc... 
+        /// Is verantwoordelijkheid van de client</param>
+        /// <param name="fieldDelimiter">b.v. een puntkomma (default), een komma of een tab</param>
+        /// <param name="emptyValue">Indien een veldwaarde in de csv file een lege string is, rapporteer dan in de plaats hiervoor deze waarde. 
+        /// Voor bulk import is dit typisch gesproken null (default).</param>
+        public CsvDataReader(StreamReader stream, char fieldDelimiter = ';', string emptyValue = null)
         {
-            if (!File.Exists(fileName))
-                throw new FileNotFoundException();
+            _delim = fieldDelimiter;
+            _constantValues = string.Empty;
+            _empytValue = emptyValue;
 
-            _stream = new StreamReader(fileName);
-            _headers = _stream.ReadLine().Split(',');
+            // Match de field delimiers (b.v. puntkomma), maar alleen daar waar een regel gesplitst moet worden.
+            // Maatregelen worden genomen om regels niet te splitsen op delimiters die binnen dubbele quotes vallen.
+            // (?=...) is een beetje technisch, zoek de preciese betekenis op in de documentatie. 
+            //     komt erop neer dat de regex na de delimiter nog een stukje doorzoekt (b.v. een stuk tussen dubbele quotes)
+            //     maar dat we dat niet rapporteren als onderdeel van de match result (dat moet nl. alleen de delimiter zijn).
+            _delimRegex = new Regex(_delim + "(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))", RegexOptions.Compiled);
+
+            _stream = stream;
+            _headerRow = _stream.ReadLine();
+            _headers = Split(_headerRow);
         }
 
-        public CsvDataReader(string fileName, Dictionary<string, string> staticColumns)
+        public void AddConstantColumn(string columnHeader, string constantValue)
         {
-            if (!File.Exists(fileName))
-                throw new FileNotFoundException();
-
-            _stream = new StreamReader(fileName);
-
-            // Get the raw header
-            string rawHeader = _stream.ReadLine();
-
-            // Add all the static columns into the header string
-            // And all the values into the string we use for reading
-            foreach (KeyValuePair<string, string> keyValue in staticColumns)
-            {
-                rawHeader += string.Format(",{0}", keyValue.Key);
-                _staticValues += string.Format(",{0}", keyValue.Value.ToString());
-            }
-            _headers = rawHeader.Split(',');
-
+            // voeg de nieuwe kolom achteraan toe
+            _headerRow += $"{_delim}{columnHeader}";
+            _constantValues += $"{_delim}{constantValue}";
+            _headers = Split(_headerRow);
         }
 
         public bool Read()
@@ -62,208 +70,135 @@ namespace SqlUtilities
 
             string rawRow = _stream.ReadLine();
 
-            // Add any static values that we have
-            if (_staticValues.Length > 0)
-                rawRow += _staticValues;
+            // voeg constante velden toe
+            if (_constantValues.Length > 0)
+                rawRow += _constantValues;
 
-            _currentRow = _CsvRegex.Split(rawRow);
+            _currentRow = Split(rawRow);
 
-            // Unfortunately the Regex keeps the quotes around strings.
-            // Those have to go.
-            // I'm sure there's a better way but this works.
-            for (int i = 0; i < _currentRow.Length; i++)
-            {
-                _currentRow[i] = _currentRow[i].Trim('"');
-            }
-
-            // 
             return true;
         }
 
-        public Object GetValue(int i)
+        private string[] Split(string input)
         {
-            return _currentRow[i];
+            string[] parts = _delimRegex.Split(input);
+
+            // verwijder mogelijke dubbele quotes aan de uiteinden
+            for (int i = 0; i < parts.Length; i++)
+            {
+                parts[i] = parts[i].Trim('"');
+            }
+            return parts;
         }
 
-        public String GetName(int i)
+        public char FieldDelimeter
+        {
+            get { return _delim; }
+        }
+
+        public string EmtpyValue
+        {
+            get { return _empytValue; }
+        }
+
+        public object GetValue(int i)
+        {
+            return _currentRow[i].Length > 0 ? _currentRow[i] : _empytValue;
+        }
+
+        public string GetName(int i)
         {
             return _headers[i];
         }
 
         public int FieldCount
         {
-            // Return the count of the number of columns, which in
-            // this case is the size of the column metadata
-            // array.
             get { return _headers.Length; }
         }
 
-        ///*
-        // * Because the user should not be able to directly create a 
-        // * DataReader object, the constructors are
-        // * marked as internal.
-        // */
-        //internal TemplateDataReader(SampleDb.SampleDbResultSet resultset)
-        //{
-        //    m_resultset = resultset;
-        //}
-
-        //internal TemplateDataReader(SampleDb.SampleDbResultSet resultset, TemplateConnection connection)
-        //{
-        //    m_resultset = resultset;
-        //    m_connection = connection;
-        //}
-
-        /****
-         * METHODS / PROPERTIES FROM IDataReader.
-         ****/
+        #region IDataReader
         public int Depth
         {
-            /*
-             * Always return a value of zero if nesting is not supported.
-             */
             get { return 0; }
         }
 
         public bool IsClosed
         {
-            /*
-             * Keep track of the reader state - some methods should be
-             * disallowed if the reader is closed.
-             */
             get { return _isClosed; }
         }
 
         public int RecordsAffected
         {
-            /*
-             * RecordsAffected is only applicable to batch statements
-             * that include inserts/updates/deletes. The sample always
-             * returns -1.
-             */
             get { return -1; }
         }
 
         public void Close()
-        { 
+        {
+            _stream.Close();
             _isClosed = true;
         }
 
         public bool NextResult()
         {
-            // The sample only returns a single resultset. However,
-            // DbDataAdapter expects NextResult to return a value.
             return false;
         }
 
-        
-
         public DataTable GetSchemaTable()
         {
-            //$
             throw new NotSupportedException();
         }
-
-        /****
-         * METHODS / PROPERTIES FROM IDataRecord.
-         ****/
+        #endregion
 
 
-
-
-        public String GetDataTypeName(int i)
+        #region IDataRecord
+        public string GetDataTypeName(int i)
         {
-            /*
-             * Usually this would return the name of the type
-             * as used on the back end, for example 'smallint' or 'varchar'.
-             * The sample returns the simple name of the .NET Framework type.
-             */
-            return "X";
+            // niet echt geimplementeerd voor andere types dan string ... 
+            return "string";
         }
 
         public Type GetFieldType(int i)
         {
-            // Return the actual Type class for the data type.
-            return typeof(int);
+            return typeof(string);
         }
-
-
 
         public int GetValues(object[] values)
         {
-            int i = 0; //, j = 0;
-            //for (; i < values.Length && j < m_resultset.metaData.Length; i++, j++)
-            //{
-            //    values[i] = m_resultset.data[m_nPos, j];
-            //}
-
-            return i;
+            for (int i = 0; i < _headers.Length; i++)
+            {
+                values[i] = GetValue(i);
+            }
+            return _headers.Length;
         }
 
         public int GetOrdinal(string name)
         {
-            // Look for the ordinal of the column with the same name and return it.
-            //for (int i = 0; i < m_resultset.metaData.Length; i++)
-            //{
-            //    if (0 == _cultureAwareCompare(name, m_resultset.metaData[i].name))
-            //    {
-            //        return i;
-            //    }
-            //}
-
-            int result = -1;
             for (int i = 0; i < _headers.Length; i++)
-                if (_headers[i].ToLower() == name.ToLower())
+            {
+                if (string.Equals(_headers[i], name, StringComparison.OrdinalIgnoreCase))
                 {
-                    result = i;
-                    return result;
+                    return i;
                 }
+            }
 
-            // Throw an exception if the ordinal cannot be found.
-            string s = string.Format("The column {0} could not be found in the results", name);
-            throw new IndexOutOfRangeException(s);
-            
+            throw new IndexOutOfRangeException($"De kolom '{name}' kon niet worden gevonden");
         }
 
         public object this[int i]
         {
-            get { return "X"; }
+            get { return GetValue(i); }
         }
 
-        public object this[String name]
+        public object this[string name]
         {
-            // Look up the ordinal and return 
-            // the value at that position.
             get { return this[GetOrdinal(name)]; }
         }
 
-       
+        #endregion
 
-        public Int32 GetInt32(int i)
-        {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
-            throw new NotSupportedException();
-        }
-
-
-
-
-
-
-        /*
-         * Implementation specific methods.
-         */
-        //private int _cultureAwareCompare(string strA, string strB)
-        //{
-        //    return CultureInfo.CurrentCulture.CompareInfo.Compare(strA, strB, CompareOptions.IgnoreKanaType | CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
-        //}
 
         public void Dispose()
         {
-            // Based on https://msdn.microsoft.com/en-us/library/fs2xkftw(v=vs.110).aspx
             this.Dispose(true);
             System.GC.SuppressFinalize(this);
         }
@@ -277,64 +212,46 @@ namespace SqlUtilities
                 _stream.Dispose();
 
             _disposed = true;
-
         }
 
-        #region Not Used
+        #region Not Implemented interface methods
+
+        public Int32 GetInt32(int i)
+        {
+            throw new NotSupportedException();
+        }
 
         public bool GetBoolean(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
         public byte GetByte(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
         public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
         {
-            // The sample does not support this method.
-            throw new NotSupportedException("GetBytes not supported.");
+            throw new NotSupportedException();
         }
 
         public char GetChar(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
         public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
         {
-            // The sample does not support this method.
-            throw new NotSupportedException("GetChars not supported.");
+            throw new NotSupportedException();
         }
 
         public Guid GetGuid(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
         public Int16 GetInt16(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
@@ -345,68 +262,38 @@ namespace SqlUtilities
 
         public Int64 GetInt64(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
         public float GetFloat(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
         public double GetDouble(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
-        public String GetString(int i)
+        public string GetString(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
         public Decimal GetDecimal(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-             */
             throw new NotSupportedException();
         }
 
         public DateTime GetDateTime(int i)
         {
-            /*
-             * Force the cast to return the type. InvalidCastException
-             * should be thrown if the data is not already of the correct type.
-            */
             throw new NotSupportedException();
         }
 
         public IDataReader GetData(int i)
         {
-            /*
-             * The sample code does not support this method. Normally,
-             * this would be used to expose nested tables and
-             * other hierarchical data.
-             */
-            throw new NotSupportedException("GetData not supported.");
+            throw new NotSupportedException();
         }
-
 
         #endregion
 

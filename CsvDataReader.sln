@@ -1,9 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.168
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CsvDataReader", "CsvDataReader\CsvDataReader.csproj", "{A8505E08-C6CF-4C55-8001-EC6C2A4786F8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CsvDataReaderTest", "CsvDataReaderTest\CsvDataReaderTest.csproj", "{ADB45236-722C-468A-B8FB-07796DF762EE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F5191081-2BE9-4F78-9C2E-CBBC9CFACCFF}"
+	ProjectSection(SolutionItems) = preProject
+		TestSettings.testsettings = TestSettings.testsettings
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -22,5 +29,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1C464789-637C-42AA-B638-99F9FE24605A}
 	EndGlobalSection
 EndGlobal
