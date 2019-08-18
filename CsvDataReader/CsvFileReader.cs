@@ -15,19 +15,20 @@ namespace Drt.Csv
     {
         private bool _disposed = false;
 
-        private delegate ToestandsFunctie ToestandsFunctie();
-
         private readonly StreamReader _reader;
-        private string _currLine;
-        private int _currPos;
         private readonly EmptyLineBehavior _emptyLineBehavior;
 
-        // gebruikt door toestandsfuncties
+        // data betreffende de toestand
+        private delegate ToestandsFunctie ToestandsFunctie();
+        private string _currLine;
+        private int _currPos;
         private List<string> _cells;
 
         /// <summary>
-        /// class voor het lezen van csv files.
-        /// Een eventuele header regel wordt niet anders anders behandeld dan de rest van de csvfile.
+        /// Class voor het lezen van csv files.
+        /// Csv file regels worden in cellen opgebroken en teruggegeven. 
+        /// We doen niet aan datatype conversies: alle velden zijn van type string.
+        /// Een eventuele header regel wordt niet anders anders behandeld dan de rest van de csv file.
         /// Tekstvelden mogen tussen een quote karakter gezet worden, codeer een quote karakter daarbinnen met behulp van twee quotes achter elkaar.
         /// </summary>
         /// <param name="stream">De invoer stream</param>
@@ -47,52 +48,54 @@ namespace Drt.Csv
         /// </summary>
         public List<string> ReadRow()
         {
-            ToestandsFunctie toestand = LeesRegel;
+            ToestandsFunctie toestand = ProcesRegel;
             while (toestand != null)
             {
+                // Roep de functie aan waar toestand pointer naar wijst. 
+                // De return waarde van die functie call bepaalt de nieuwe toestand.
                 toestand = toestand();
             }
 
             return _cells;
         }
-        
-        #region Deze functies beschrijven ook een toestand van het parsen van een regel weer
-        private ToestandsFunctie LeesRegel()
-        {
-            // Read next line from the file
-            _cells = null;
-            _currLine = _reader.ReadLine();
 
-            // Test for end of file
-            if (_currLine == null)
+        #region Deze functies beschrijven ook een toestand van het parsen van een regel weer
+        private ToestandsFunctie ProcesRegel()
+        {
+            _cells = null;
+
+            // Test voor einde van de file
+            if (_reader.EndOfStream)
                 return null;
 
-            // Test for empty line
+            // lees de volgende regel
+            _currLine = _reader.ReadLine();
             if (_currLine.Length == 0)
-            {
-                switch (_emptyLineBehavior)
-                {
-                    case EmptyLineBehavior.NoCells:
-                        _cells = new List<string>();
-                        return null;
+                return ProcesLegeRegel;
 
-                    case EmptyLineBehavior.EmptyCell:
-                        _cells = new List<string> { string.Empty };
-                        return null;
-
-                    case EmptyLineBehavior.Ignore:
-                        // ga door naar de volgende regel
-                        return LeesRegel;
-
-                    case EmptyLineBehavior.EndOfFile:
-                        return null;
-                }
-            }
-
-            return LeesCellen;
+            return ProcesNietLegeRegel;
         }
 
-        private ToestandsFunctie LeesCellen()
+        private ToestandsFunctie ProcesLegeRegel()
+        {
+            switch (_emptyLineBehavior)
+            {
+                case EmptyLineBehavior.NoCells:
+                    _cells = new List<string>();
+                    return null;
+                case EmptyLineBehavior.EmptyCell:
+                    _cells = new List<string> { string.Empty };
+                    return null;
+                case EmptyLineBehavior.Ignore:
+                    return ProcesRegel;  // ga door naar de volgende regel
+                case EmptyLineBehavior.EndOfFile:
+                    return null;
+                default:
+                    return null;  // hier komen we nooit
+            }
+        }
+
+        private ToestandsFunctie ProcesNietLegeRegel()
         {
             _cells = new List<string>();
             _currPos = 0;
@@ -103,7 +106,6 @@ namespace Drt.Csv
         private ToestandsFunctie LeesCel()
         {
             string cel;
-            // Read next cell
             if (_currPos < _currLine.Length && _currLine[_currPos] == Quote)
                 cel = ReadQuotedCell();
             else

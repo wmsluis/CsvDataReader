@@ -11,12 +11,6 @@ namespace Drt.Business.Test
     [TestClass]
     public class CsvFileReaderTests
     {
-        //public static bool AreEqual(object[] expected, object[] found)
-        //{
-        //    if 
-        //    return true;
-        //}
-
         [TestMethod]
         public void CsvSimpleOpen()
         {
@@ -242,6 +236,45 @@ namespace Drt.Business.Test
         }
 
         [TestMethod]
+        public void CsvEmptyLineReturnNoCells()
+        {
+            using (var sr = new StreamReader(@"Emptyline.csv"))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.NoCells))
+            {
+                var values = csvr.ReadRow();  // header
+                values = csvr.ReadRow();  // rij 1
+
+                // Rij 2 is leeg, geef een lege regel terug              
+                values = csvr.ReadRow();
+                CollectionAssert.AreEqual(new List<string> { }, values);
+
+                values = csvr.ReadRow(); // rij3
+                Assert.IsNotNull(values);
+                CollectionAssert.AreEqual(new List<string> { "Row3A", "Row3B", "Row3C" }, values);
+            }
+        }
+
+        [TestMethod]
+        public void CsvEmptyLineReturnEmptyCell()
+        {
+            using (var sr = new StreamReader(@"Emptyline.csv"))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.EmptyCell))
+            {
+                var values = csvr.ReadRow();  // header
+                values = csvr.ReadRow();  // rij 1
+
+                // Rij 2 is leeg, geef een enkele cell terug met lege string             
+                values = csvr.ReadRow();
+                CollectionAssert.AreEqual(new List<string> { string.Empty }, values);
+
+                values = csvr.ReadRow(); // rij3
+                Assert.IsNotNull(values);
+                CollectionAssert.AreEqual(new List<string> { "Row3A", "Row3B", "Row3C" }, values);
+            }
+        }
+
+
+        [TestMethod]
         public void CsvEmptyLineIsEndOfFile()
         {
             using (var sr = new StreamReader(@"Emptyline.csv"))
@@ -254,41 +287,6 @@ namespace Drt.Business.Test
 
                 values = csvr.ReadRow(); // rij3
                 Assert.IsNull(values);
-            }
-        }
-
-        [TestMethod]
-        public void CsvEmptyLineGeeftLegeCollectie()
-        {
-            using (var sr = new StreamReader(@"Emptyline.csv"))
-            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.NoCells))
-            {
-                var values = csvr.ReadRow();  // header
-                values = csvr.ReadRow();  // rij 1
-
-                // Rij 2 is leeg, geef een lege collectie terug           
-
-                values = csvr.ReadRow(); // rij3
-                Assert.IsNotNull(values);
-                Assert.AreEqual(0, values.Count);
-            }
-        }
-
-        [TestMethod]
-        public void CsvEmptyLineGeeftCollectieMetEnkeleKolom()
-        {
-            using (var sr = new StreamReader(@"Emptyline.csv"))
-            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.EmptyCell))
-            {
-                var values = csvr.ReadRow();  // header
-                values = csvr.ReadRow();  // rij 1
-
-                // Rij 2 is leeg, geef een lege collectie terug           
-
-                values = csvr.ReadRow(); // rij3
-                Assert.IsNotNull(values);
-                Assert.AreEqual(1, values.Count);
-                Assert.AreEqual(string.Empty, values[0]);
             }
         }
 
