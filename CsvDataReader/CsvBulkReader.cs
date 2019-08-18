@@ -32,8 +32,7 @@ namespace Drt.Csv
             _empytValue = emptyValue;
 
             _csvFileReader = csvFileReader;
-            _headers = new List<string>();
-            _csvFileReader.ReadRow(_headers);
+            _headers = _csvFileReader.ReadRow();
         }
 
         /// <summary>
@@ -49,13 +48,13 @@ namespace Drt.Csv
 
         public bool Read()
         {
-            _currentRow = new List<string>();
-            bool result = _csvFileReader.ReadRow(_currentRow);
+            _currentRow = _csvFileReader.ReadRow();
+            if (_currentRow == null) return false;
 
             if (_constantValues.Count > 0)
                 _currentRow.AddRange(_constantValues);
 
-            return result;
+            return true;
         }
 
         public string EmtpyValue

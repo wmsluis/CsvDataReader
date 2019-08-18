@@ -90,7 +90,7 @@ namespace Drt.Business.Test
         public void BulkBulkCommaSeperated()
         {
             var sr = new StreamReader(@"Comma.csv");
-            var csvr = new CsvFileReader(sr, fieldDelimiter : ',');
+            var csvr = new CsvFileReader(sr, fieldDelimiter: ',');
             var reader = new CsvBulkReader(csvr);
 
             reader.Read();
@@ -107,7 +107,7 @@ namespace Drt.Business.Test
         public void BulkBulkTabSeperated()
         {
             var sr = new StreamReader(@"Tab.csv");
-            var csvr = new CsvFileReader(sr, fieldDelimiter : '\t');
+            var csvr = new CsvFileReader(sr, fieldDelimiter: '\t');
             var reader = new CsvBulkReader(csvr);
             reader.Read();
             Assert.AreEqual("Row1A", reader.GetValue(0));
@@ -205,19 +205,21 @@ namespace Drt.Business.Test
         [TestMethod]
         public void BulkTwoStaticColumns()
         {
-            var sr = new StreamReader(@"Simple.csv");
-            var csvr = new CsvFileReader(sr);
-            var reader = new CsvBulkReader(csvr);
-            reader.AddConstantColumn("Column1", "Value");
-            reader.AddConstantColumn("ColumnZ", "FileName");
-
-            Assert.AreEqual(4, reader.GetOrdinal("ColumnZ"));
-            while (reader.Read())
+            using (var sr = new StreamReader(@"Simple.csv"))
+            using (var csvr = new CsvFileReader(sr))
+            using (var reader = new CsvBulkReader(csvr))
             {
-                Assert.AreEqual("FileName", reader.GetValue(reader.GetOrdinal("ColumnZ")));
+                reader.AddConstantColumn("Column1", "1234.5");
+                reader.AddConstantColumn("Column2", "Boohoo");
+
+                reader.Read();
+                Assert.AreEqual("1234.5", reader[3]);
+                Assert.AreEqual("Boohoo", reader[4]);
+
+                reader.Read();
+                Assert.AreEqual("1234.5", reader["Column1"]);
+                Assert.AreEqual("Boohoo", reader["Column2"]);
             }
-            reader.Close();
-            reader.Dispose();
         }
 
         [TestMethod]
@@ -325,6 +327,7 @@ namespace Drt.Business.Test
                 Assert.AreEqual("Row1A", reader.GetValue(0));
                 Assert.AreEqual("Row1B", reader.GetValue(1));
                 Assert.AreEqual("Row1C", reader.GetValue(2));
+
                 reader.Read();
                 Assert.AreEqual("Row2A", reader.GetValue(0));
                 Assert.AreEqual("Row2B", reader.GetValue(1));

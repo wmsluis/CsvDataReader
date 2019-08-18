@@ -7,9 +7,16 @@ using System.IO;
 
 namespace Drt.Business.Test
 {
+
     [TestClass]
     public class CsvFileReaderTests
     {
+        //public static bool AreEqual(object[] expected, object[] found)
+        //{
+        //    if 
+        //    return true;
+        //}
+
         [TestMethod]
         public void CsvSimpleOpen()
         {
@@ -32,8 +39,8 @@ namespace Drt.Business.Test
         {
             var sr = new StreamReader(@"Simple.csv");
             var csvr = new CsvFileReader(sr);
-            var values = new List<string>();
-            while (csvr.ReadRow(values))
+            List<string> values;
+            while ((values = csvr.ReadRow()) != null)
             {
             }
             csvr.Dispose();
@@ -44,12 +51,10 @@ namespace Drt.Business.Test
         {
             var sr = new StreamReader(@"Simple.csv");
             var csvr = new CsvFileReader(sr);
-            var values = new List<string>();
-            bool result1 = csvr.ReadRow(values);
-            bool result2 = csvr.ReadRow(values);
-            Assert.IsTrue(result2);
-            Assert.AreEqual("Row1A", values[0]);
-            Assert.AreEqual("Row1B", values[1]);
+            var values = csvr.ReadRow();
+            values = csvr.ReadRow();
+            Assert.IsNotNull(values);
+            CollectionAssert.AreEqual(new List<string> { "Row1A", "Row1B", "Row1C" }, values);
             csvr.Dispose();
         }
 
@@ -57,13 +62,11 @@ namespace Drt.Business.Test
         public void CsvCommaSeperated()
         {
             var sr = new StreamReader(@"Comma.csv");
-            var csvr = new CsvFileReader(sr, fieldDelimiter : ',');
+            var csvr = new CsvFileReader(sr, fieldDelimiter: ',');
 
-            var values = new List<string>();
-            csvr.ReadRow(values);
-            csvr.ReadRow(values);
-            Assert.AreEqual("Row1A", values[0]);
-            Assert.AreEqual("Row1B", values[1]);
+            var values = csvr.ReadRow();
+            values = csvr.ReadRow();
+            CollectionAssert.AreEqual(new List<string> { "Row1A", "Row1B", "Row1C" }, values);
             csvr.Dispose();
         }
 
@@ -71,12 +74,10 @@ namespace Drt.Business.Test
         public void CsvTabSeperated()
         {
             var sr = new StreamReader(@"Tab.csv");
-            var csvr = new CsvFileReader(sr, fieldDelimiter : '\t');
-            var values = new List<string>();
-            csvr.ReadRow(values);
-            csvr.ReadRow(values);
-            Assert.AreEqual("Row1A", values[0]);
-            Assert.AreEqual("Row1B", values[1]);
+            var csvr = new CsvFileReader(sr, fieldDelimiter: '\t');
+            var values = csvr.ReadRow();
+            values = csvr.ReadRow();
+            CollectionAssert.AreEqual(new List<string> { "Row1A", "Row1B", "Row1C" }, values);
             csvr.Dispose();
         }
 
@@ -85,8 +86,7 @@ namespace Drt.Business.Test
         {
             var sr = new StreamReader(@"Simple.csv");
             var csvr = new CsvFileReader(sr);
-            var values = new List<string>();
-            csvr.ReadRow(values);
+            var values = csvr.ReadRow();
             Assert.AreEqual(3, values.Count);
             csvr.Dispose();
         }
@@ -96,10 +96,9 @@ namespace Drt.Business.Test
         {
             var sr = new StreamReader(@"Simple.csv");
             var csvr = new CsvFileReader(sr);
-            var values = new List<string>();
-            csvr.ReadRow(values);
-            csvr.ReadRow(values);
-            csvr.ReadRow(values);
+            var values = csvr.ReadRow();
+            values = csvr.ReadRow();
+            values = csvr.ReadRow();
             Assert.AreEqual("Q;A", values[2]);
             csvr.Dispose();
         }
@@ -109,10 +108,9 @@ namespace Drt.Business.Test
         {
             var sr = new StreamReader(@"Simple.csv");
             var csvr = new CsvFileReader(sr);
-            var values = new List<string>();
-            csvr.ReadRow(values);
-            csvr.ReadRow(values);
-            csvr.ReadRow(values);
+            var values = csvr.ReadRow();
+            values = csvr.ReadRow();
+            values = csvr.ReadRow();
             Assert.AreEqual(values[1], "Embedded \" Quote");
             csvr.Dispose();
         }
@@ -159,49 +157,40 @@ namespace Drt.Business.Test
             using (var sr = new StreamReader(@"SomeEmptyValues.csv"))
             using (var csvr = new CsvFileReader(sr))
             {
-                var values = new List<string>();
-                csvr.ReadRow(values);
-                csvr.ReadRow(values);
-                csvr.ReadRow(values);
-                Assert.AreEqual("Quotes", values[0]);
-                Assert.AreEqual("", values[1]);
-                Assert.AreEqual("Q;A", values[2]);
+                var values = csvr.ReadRow();  // header
+
+                values = csvr.ReadRow();      // rij 1
+                Assert.AreEqual(string.Empty, values[0]);
+                CollectionAssert.AreEqual(new List<string> {string.Empty, "Row1B", "Row1C" }, values);
+
+                values = csvr.ReadRow();      // rij 2
+                CollectionAssert.AreEqual(new List<string> { "Quotes", string.Empty, "Q;A" }, values);
             }
         }
 
         [TestMethod]
         public void CsvLongLines()
         {
-            using (var sr = new StreamReader(@"LinetooLong.csv"))
+            using (var sr = new StreamReader(@"LineTooLong.csv"))
             using (var csvr = new CsvFileReader(sr))
             {
-                var values = new List<string>();
-                csvr.ReadRow(values);
-                csvr.ReadRow(values);
-                Assert.AreEqual("Row1A", values[0]);
-                Assert.AreEqual("Row1B", values[1]);
-                Assert.AreEqual("Row1C", values[2]);
-                csvr.ReadRow(values);
-                Assert.AreEqual("Row2A", values[0]);
-                Assert.AreEqual("Row2B", values[1]);
-                Assert.AreEqual("Row2C", values[2]);
+                var values = csvr.ReadRow();
+                values = csvr.ReadRow();
+                CollectionAssert.AreEqual(new List<string> { "Row1A", "Row1B", "Row1C", "Row1D" }, values);
+                values = csvr.ReadRow();
+                CollectionAssert.AreEqual(new List<string> { "Row2A", "Row2B", "Row2C" }, values);
             }
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentOutOfRangeException), "Regl 1 is te kort en heeft geen waarde voor de derde kolom")]
         public void CsvLinesTooShort()
         {
-            using (var sr = new StreamReader(@"LinetooShort.csv"))
+            using (var sr = new StreamReader(@"LineTooShort.csv"))
             using (var csvr = new CsvFileReader(sr))
             {
-                var values = new List<string>();
-                csvr.ReadRow(values);
-                csvr.ReadRow(values);
-                Assert.AreEqual("Row1A", values[0]);
-                Assert.AreEqual("Row1B", values[1]);
-                Assert.AreEqual("", values[2]);
-                Assert.Fail("mag hier niet komen");
+                var values = csvr.ReadRow();
+                values = csvr.ReadRow();
+                CollectionAssert.AreEqual(new List<string> { "Row1A", "Row1B" }, values);
             }
         }
 
@@ -211,9 +200,8 @@ namespace Drt.Business.Test
             using (var sr = new StreamReader(@"Empty.csv"))
             using (var csvr = new CsvFileReader(sr))
             {
-                var values = new List<string>();
-                bool result = csvr.ReadRow(values);
-                Assert.IsFalse(result);
+                var values = csvr.ReadRow();
+                Assert.IsNull(values);
             }
         }
 
@@ -223,25 +211,85 @@ namespace Drt.Business.Test
             using (var sr = new StreamReader(@"Multiline.csv"))
             using (var csvr = new CsvFileReader(sr))
             {
-                var values = new List<string>();
-                csvr.ReadRow(values);  // header
-                csvr.ReadRow(values);  // rij 1
+                var values = csvr.ReadRow();  // header
+                values = csvr.ReadRow();  // rij 1
 
-                bool result2 = csvr.ReadRow(values); // Rij 2
-                Assert.IsTrue(result2);
-                Assert.AreEqual("Row2A", values[0]);
-                Assert.AreEqual(@"Eerste regel
-Tweede regel",values[1]);
-                Assert.AreEqual("Q;A", values[2]);
+                values = csvr.ReadRow(); // Rij 2
+                Assert.IsNotNull(values);
+                CollectionAssert.AreEqual(new List<string> { "Row2A", "Eerste regel\r\nTweede regel", "Q;A" }, values);
 
-                bool result3 = csvr.ReadRow(values); // rij3
-                Assert.IsTrue(result3);
-                Assert.AreEqual("Row3A", values[0]);
-                Assert.AreEqual("Row3B", values[1]);
-                Assert.AreEqual("Row3C", values[2]);
-
+                values = csvr.ReadRow(); // rij3
+                Assert.IsNotNull(values);
+                CollectionAssert.AreEqual(new List<string> { "Row3A", "Row3B", "Row3C" }, values);
             }
         }
 
+        [TestMethod]
+        public void CsvEmptyLineIgnore()
+        {
+            using (var sr = new StreamReader(@"Emptyline.csv"))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.Ignore))
+            {
+                var values = csvr.ReadRow();  // header
+                values = csvr.ReadRow();  // rij 1
+
+                // Rij 2 is leeg, wordt overgeslagen                
+
+                values = csvr.ReadRow(); // rij3
+                Assert.IsNotNull(values);
+                CollectionAssert.AreEqual(new List<string> { "Row3A", "Row3B", "Row3C" }, values);
+            }
+        }
+
+        [TestMethod]
+        public void CsvEmptyLineIsEndOfFile()
+        {
+            using (var sr = new StreamReader(@"Emptyline.csv"))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.EndOfFile))
+            {
+                var values = csvr.ReadRow();  // header
+                values = csvr.ReadRow();  // rij 1
+
+                // Rij 2 is leeg, lees niet verder               
+
+                values = csvr.ReadRow(); // rij3
+                Assert.IsNull(values);
+            }
+        }
+
+        [TestMethod]
+        public void CsvEmptyLineGeeftLegeCollectie()
+        {
+            using (var sr = new StreamReader(@"Emptyline.csv"))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.NoColumns))
+            {
+                var values = csvr.ReadRow();  // header
+                values = csvr.ReadRow();  // rij 1
+
+                // Rij 2 is leeg, geef een lege collectie terug           
+
+                values = csvr.ReadRow(); // rij3
+                Assert.IsNotNull(values);
+                Assert.AreEqual(0, values.Count);
+            }
+        }
+
+        [TestMethod]
+        public void CsvEmptyLineGeeftCollectieMetEnkeleKolom()
+        {
+            using (var sr = new StreamReader(@"Emptyline.csv"))
+            using (var csvr = new CsvFileReader(sr, emptyLineBehavior: EmptyLineBehavior.EmptyColumn))
+            {
+                var values = csvr.ReadRow();  // header
+                values = csvr.ReadRow();  // rij 1
+
+                // Rij 2 is leeg, geef een lege collectie terug           
+
+                values = csvr.ReadRow(); // rij3
+                Assert.IsNotNull(values);
+                Assert.AreEqual(1, values.Count);
+                Assert.AreEqual(string.Empty, values[0]);
+            }
+        }
     }
 }

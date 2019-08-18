@@ -37,35 +37,30 @@ namespace Drt.Csv
         /// more data could be read because the end of the file was reached.
         /// </summary>
         /// <param name="columns">Collection to hold the columns read</param>
-        public bool ReadRow(List<string> columns)
+        public List<string> ReadRow()
         {
-            // Verify required argument
-            if (columns == null)
-                throw new ArgumentNullException("columns");
-
-            ReadNextLine:
             // Read next line from the file
             CurrLine = Reader.ReadLine();
             CurrPos = 0;
             // Test for end of file
             if (CurrLine == null)
-                return false;
+                return null;
             // Test for empty line
             if (CurrLine.Length == 0)
             {
                 switch (EmptyLineBehavior)
                 {
                     case EmptyLineBehavior.NoColumns:
-                        columns.Clear();
-                        return true;
+                        return new List<string>();
                     case EmptyLineBehavior.Ignore:
-                        goto ReadNextLine;
+                        return ReadRow();
                     case EmptyLineBehavior.EndOfFile:
-                        return false;
+                        return null;
                 }
             }
 
             // Parse line
+            var columns = new List<string>();
             string column;
             int numColumns = 0;
             while (true)
@@ -92,7 +87,7 @@ namespace Drt.Csv
             if (numColumns < columns.Count)
                 columns.RemoveRange(numColumns, columns.Count - numColumns);
             // Indicate success
-            return true;
+            return columns;
         }
 
         /// <summary>
