@@ -63,6 +63,7 @@ namespace Drt.Csv
         private ToestandsFunctie ProcesRegel()
         {
             _cells = null;
+            _currPos = 0;
 
             // Test voor einde van de file
             if (_reader.EndOfStream)
@@ -97,21 +98,28 @@ namespace Drt.Csv
 
         private ToestandsFunctie ProcesNietLegeRegel()
         {
+            Debug.Assert(_currPos == 0);
+            Debug.Assert(_currLine != null && _currLine.Length > 0);
+
             _cells = new List<string>();
-            _currPos = 0;
 
             return LeesCel;
         }
 
         private ToestandsFunctie LeesCel()
         {
-            string cel;
-            if (_currPos < _currLine.Length && _currLine[_currPos] == Quote)
-                cel = ReadQuotedCell();
-            else
-                cel = ReadUnquotedCell();
-            _cells.Add(cel);
+            Debug.Assert(_cells != null);
+            Debug.Assert(_currPos < _currLine.Length);
+            Debug.Assert(_currPos == 0 || _currLine[_currPos - 1] == Delimiter);
 
+            if (_currLine[_currPos] == Quote)
+                return ReadQuotedCell;
+            else
+                return ReadUnquotedCell;
+        }
+
+        private ToestandsFunctie CelFinale()
+        {
             // Break if we reached the end of the line
             if (_currLine == null || _currPos == _currLine.Length)
                 return null;
@@ -131,10 +139,11 @@ namespace Drt.Csv
         /// the current position points to the delimiter or the end of the last
         /// line in the file. Note: CurrLine may be set to null on return.
         /// </summary>
-        private string ReadQuotedCell()
+        private ToestandsFunctie ReadQuotedCell()
         {
             // Skip opening quote character
-            Debug.Assert(_currPos < _currLine.Length && _currLine[_currPos] == Quote);
+            Debug.Assert(_currPos == 0 || _currLine[_currPos - 1] == Delimiter);
+            Debug.Assert(_currLine[_currPos] == Quote);
             _currPos++;
 
             // Parse cell
@@ -158,7 +167,9 @@ namespace Drt.Csv
                     string s = _currLine.Substring(_currPos, quotePos - _currPos);
                     builder.Append(s);
                     _currPos = _currLine.Length;
-                    return builder.ToString();
+                    string cel = builder.ToString();
+                    _cells.Add(cel);
+                    return CelFinale;
                 }
                 else if (_currLine[quotePos + 1] == Quote)
                 {
@@ -174,7 +185,9 @@ namespace Drt.Csv
                     string s = _currLine.Substring(_currPos, quotePos - _currPos);
                     builder.Append(s);
                     _currPos = quotePos + 1;
-                    return builder.ToString();
+                    string cel = builder.ToString();
+                    _cells.Add(cel);
+                    return CelFinale;
                 }
                 else
                 {
@@ -194,13 +207,18 @@ namespace Drt.Csv
         /// current position points to the delimiter or the end of the current
         /// line.
         /// </summary>
-        private string ReadUnquotedCell()
+        private ToestandsFunctie ReadUnquotedCell()
         {
+            Debug.Assert(_currPos == 0 || _currLine[_currPos - 1] == Delimiter);
+            Debug.Assert(_currLine[_currPos] != Quote);
+
             int startPos = _currPos;
             _currPos = _currLine.IndexOf(Delimiter, _currPos);
             if (_currPos == -1)
                 _currPos = _currLine.Length;
-            return _currLine.Substring(startPos, _currPos - startPos);
+            string cel = _currLine.Substring(startPos, _currPos - startPos);
+            _cells.Add(cel);
+            return CelFinale;
         }
 
         public void Dispose()
