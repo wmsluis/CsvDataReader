@@ -63,7 +63,7 @@ namespace Drt.Csv
         private ToestandsFunctie ProcesRegel()
         {
             _cells = null;
-            _currPos = 0;
+            _currPos = -1;
 
             // Test voor einde van de file
             if (_reader.EndOfStream)
@@ -98,7 +98,7 @@ namespace Drt.Csv
 
         private ToestandsFunctie ProcesNietLegeRegel()
         {
-            Debug.Assert(_currPos == 0);
+            Debug.Assert(_currPos == -1);
             Debug.Assert(_currLine != null && _currLine.Length > 0);
 
             _cells = new List<string>();
@@ -109,8 +109,17 @@ namespace Drt.Csv
         private ToestandsFunctie LeesCel()
         {
             Debug.Assert(_cells != null);
-            Debug.Assert(_currPos < _currLine.Length);
-            Debug.Assert(_currPos == 0 || _currLine[_currPos - 1] == Delimiter);
+            Debug.Assert(_currLine != null && _currLine.Length > 0);
+
+            // _currpos = -1, zit op een delimiter, of line length
+
+            // Break if we reached the end of the line
+            if (_currPos == _currLine.Length)
+                return null;
+
+            Debug.Assert(_currPos == -1 || _currLine[_currPos] == Delimiter);
+
+            _currPos++;
 
             if (_currLine[_currPos] == Quote)
                 return ReadQuotedCell;
@@ -118,19 +127,6 @@ namespace Drt.Csv
                 return ReadUnquotedCell;
         }
 
-        private ToestandsFunctie CelFinale()
-        {
-            // Break if we reached the end of the line
-            if (_currLine == null || _currPos == _currLine.Length)
-                return null;
-
-            // Otherwise skip delimiter
-            Debug.Assert(_currLine[_currPos] == Delimiter);
-            _currPos++;
-
-            // lees de volgende cel
-            return LeesCel;
-        }
         #endregion
 
         /// <summary>
@@ -169,7 +165,7 @@ namespace Drt.Csv
                     _currPos = _currLine.Length;
                     string cel = builder.ToString();
                     _cells.Add(cel);
-                    return CelFinale;
+                    return LeesCel;
                 }
                 else if (_currLine[quotePos + 1] == Quote)
                 {
@@ -187,7 +183,7 @@ namespace Drt.Csv
                     _currPos = quotePos + 1;
                     string cel = builder.ToString();
                     _cells.Add(cel);
-                    return CelFinale;
+                    return LeesCel;
                 }
                 else
                 {
@@ -218,7 +214,7 @@ namespace Drt.Csv
                 _currPos = _currLine.Length;
             string cel = _currLine.Substring(startPos, _currPos - startPos);
             _cells.Add(cel);
-            return CelFinale;
+            return LeesCel;
         }
 
         public void Dispose()
