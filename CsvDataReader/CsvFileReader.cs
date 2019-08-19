@@ -21,7 +21,7 @@ namespace Drt.Csv
         // data betreffende de toestand
         private delegate ToestandsFunctie ToestandsFunctie();
         private string _currLine;
-        private int _currPos;
+        private int _delimPos;
         private List<string> _cells;
 
         /// <summary>
@@ -49,7 +49,7 @@ namespace Drt.Csv
         public List<string> ReadRow()
         {
             ToestandsFunctie toestand = ProcesRegel;
-            while (toestand != null)
+            while (toestand != EindeRegel)
             {
                 // Roep de functie aan waar toestand pointer naar wijst. 
                 // De return waarde van die functie call bepaalt de nieuwe toestand.
@@ -62,19 +62,22 @@ namespace Drt.Csv
         #region Deze functies beschrijven ook een toestand van het parsen van een regel weer
         private ToestandsFunctie ProcesRegel()
         {
+            _delimPos = -1;
             _cells = null;
-            _currPos = -1;
 
             // Test voor einde van de file
             if (_reader.EndOfStream)
-                return null;
+                return EindeRegel;
 
-            // lees de volgende regel
+            // Lees de volgende regel
             _currLine = _reader.ReadLine();
             if (_currLine.Length == 0)
                 return ProcesLegeRegel;
 
-            return ProcesNietLegeRegel;
+            _cells = new List<string>();
+
+            // Lees de cellen nu één voor één.
+            return LeesCel;
         }
 
         private ToestandsFunctie ProcesLegeRegel()
@@ -83,53 +86,43 @@ namespace Drt.Csv
             {
                 case EmptyLineBehavior.NoCells:
                     _cells = new List<string>();
-                    return null;
+                    return EindeRegel;
+
                 case EmptyLineBehavior.EmptyCell:
                     _cells = new List<string> { string.Empty };
-                    return null;
+                    return EindeRegel;
+
                 case EmptyLineBehavior.Ignore:
                     return ProcesRegel;  // ga door naar de volgende regel
+
                 case EmptyLineBehavior.EndOfFile:
-                    return null;
-                default:
-                    return null;  // hier komen we nooit
+                    return EindeRegel;
             }
+
+            throw new InvalidProgramException("Hier mogen we nooit komen");
         }
 
-        private ToestandsFunctie ProcesNietLegeRegel()
+        // Deze functie wordt nooit aangeroepen, toch is hij nodig ... :-)
+        private ToestandsFunctie EindeRegel()
         {
-            Debug.Assert(_currPos == -1);
-            Debug.Assert(_currLine != null && _currLine.Length > 0);
-
-            _cells = new List<string>();
-
-            return LeesCel;
+            throw new InvalidProgramException("Hier mogen we nooit komen");
         }
 
         private ToestandsFunctie LeesCel()
         {
             Debug.Assert(_cells != null);
-            Debug.Assert(_currLine != null && _currLine.Length > 0);
+            Debug.Assert(_currLine != null);
+            Debug.Assert(_currLine.Length > 0);
+            Debug.Assert(_delimPos == -1 || _delimPos == _currLine.Length || _currLine[_delimPos] == Delimiter);
 
-            Debug.Assert(
-                _currPos == -1 ||
-                _currPos == _currLine.Length ||
-                _currLine[_currPos] == Delimiter
-                );
+            if (_delimPos == _currLine.Length)
+                return EindeRegel;
 
-            // Break if we reached the end of the line
-            if (_currPos == _currLine.Length)
-                return null;
-
-            _currPos++;
-
-            if (_currLine[_currPos] == Quote)
+            if (_currLine[_delimPos + 1] == Quote)
                 return ReadQuotedCell;
             else
                 return ReadUnquotedCell;
         }
-
-        #endregion
 
         /// <summary>
         /// Reads a quoted cell by reading from the current line until a
@@ -139,51 +132,48 @@ namespace Drt.Csv
         /// </summary>
         private ToestandsFunctie ReadQuotedCell()
         {
-            // Skip opening quote character
-            Debug.Assert(_currPos == 0 || _currLine[_currPos - 1] == Delimiter);
-            Debug.Assert(_currLine[_currPos] == Quote);
-            _currPos++;
+            Debug.Assert(_currLine[_delimPos + 1] == Quote);
 
-            // Parse cell
             var builder = new StringBuilder();
             while (true)
             {
+                Debug.Assert(_delimPos == -1 || _currLine[_delimPos] == Delimiter || _currLine[_delimPos] == Quote);
+
                 // zoek de eerstvolgende quote
-                int quotePos = _currLine.IndexOf(Quote, _currPos);
+                int quotePos = _currLine.IndexOf(Quote, _delimPos + 2);
                 if (quotePos == -1)
                 {
                     // quote niet gevonden: ...\r\n
-                    string s = _currLine.Substring(_currPos, _currLine.Length - _currPos);
+                    string s = _currLine.Substring(_delimPos + 1, _currLine.Length - _delimPos - 1);
                     builder.Append(s);
                     builder.Append(Environment.NewLine);
                     _currLine = _reader.ReadLine();
-                    _currPos = 0;
+                    _delimPos = -1;
                 }
                 else if (quotePos + 1 == _currLine.Length)
                 {
                     // quote aan het einde van de regel: ...."\r\n
-                    string s = _currLine.Substring(_currPos, quotePos - _currPos);
+                    string s = _currLine.Substring(_delimPos + 1, quotePos - _delimPos - 1);
                     builder.Append(s);
-                    _currPos = _currLine.Length;
-                    string cel = builder.ToString();
+                    _delimPos = _currLine.Length;
+                    string cel = builder.ToString(1, builder.Length - 1);
                     _cells.Add(cel);
                     return LeesCel;
                 }
                 else if (_currLine[quotePos + 1] == Quote)
                 {
                     // dubbele quote:  ...""...
-                    quotePos++;
-                    string s = _currLine.Substring(_currPos, quotePos - _currPos);
+                    string s = _currLine.Substring(_delimPos + 1, quotePos - _delimPos - 1);
                     builder.Append(s);
-                    _currPos = quotePos + 1;
+                    _delimPos = quotePos; // mss niet helemaal een delimiter ... 
                 }
                 else if (_currLine[quotePos + 1] == Delimiter)
                 {
                     // einde deze cel:  ...";...
-                    string s = _currLine.Substring(_currPos, quotePos - _currPos);
+                    string s = _currLine.Substring(_delimPos + 1, quotePos - _delimPos);
                     builder.Append(s);
-                    _currPos = quotePos + 1;
-                    string cel = builder.ToString();
+                    _delimPos = quotePos + 1;
+                    string cel = builder.ToString(1, builder.Length - 2);
                     _cells.Add(cel);
                     return LeesCel;
                 }
@@ -191,10 +181,9 @@ namespace Drt.Csv
                 {
                     // een losse enkele quote: ..."....
                     // dit zou eigenlijk niet mogen. We doen maar alsof deze tweemaal voorkomt...
-                    quotePos++;
-                    string s = _currLine.Substring(_currPos, quotePos - _currPos);
+                    string s = _currLine.Substring(_delimPos + 1, quotePos - _delimPos);
                     builder.Append(s);
-                    _currPos = quotePos;
+                    _delimPos = quotePos;
                 }
             }
         }
@@ -207,17 +196,22 @@ namespace Drt.Csv
         /// </summary>
         private ToestandsFunctie ReadUnquotedCell()
         {
-            Debug.Assert(_currPos == 0 || _currLine[_currPos - 1] == Delimiter);
-            Debug.Assert(_currLine[_currPos] != Quote);
+            Debug.Assert(_delimPos == -1 || _currLine[_delimPos] == Delimiter);
+            Debug.Assert(_currLine[_delimPos + 1] != Quote);
 
-            int startPos = _currPos;
-            _currPos = _currLine.IndexOf(Delimiter, _currPos);
-            if (_currPos == -1)
-                _currPos = _currLine.Length;
-            string cel = _currLine.Substring(startPos, _currPos - startPos);
+            _delimPos++;
+
+            int startPos = _delimPos;
+            _delimPos = _currLine.IndexOf(Delimiter, _delimPos);
+            if (_delimPos == -1)
+                _delimPos = _currLine.Length;
+            string cel = _currLine.Substring(startPos, _delimPos - startPos);
             _cells.Add(cel);
             return LeesCel;
         }
+
+        #endregion
+
 
         public void Dispose()
         {

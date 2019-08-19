@@ -93,7 +93,7 @@ namespace Drt.Business.Test
             var values = csvr.ReadRow();
             values = csvr.ReadRow();
             values = csvr.ReadRow();
-            Assert.AreEqual("Q;A", values[2]);
+            Assert.AreEqual(values[2], "Q;A");
             csvr.Dispose();
         }
 
@@ -105,7 +105,7 @@ namespace Drt.Business.Test
             var values = csvr.ReadRow();
             values = csvr.ReadRow();
             values = csvr.ReadRow();
-            Assert.AreEqual(values[1], "Embedded \" Quote");
+            Assert.AreEqual("Embedded \" Quote", values[1]);
             csvr.Dispose();
         }
 
