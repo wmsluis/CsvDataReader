@@ -199,10 +199,8 @@ namespace Drt.Csv
             Debug.Assert(_delimPos == -1 || _currLine[_delimPos] == Delimiter);
             Debug.Assert(_currLine[_delimPos + 1] != Quote);
 
-            _delimPos++;
-
-            int startPos = _delimPos;
-            _delimPos = _currLine.IndexOf(Delimiter, _delimPos);
+            int startPos = _delimPos + 1;
+            _delimPos = _currLine.IndexOf(Delimiter, startPos);
             if (_delimPos == -1)
                 _delimPos = _currLine.Length;
             string cel = _currLine.Substring(startPos, _delimPos - startPos);
