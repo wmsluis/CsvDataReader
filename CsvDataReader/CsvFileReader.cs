@@ -63,11 +63,13 @@ namespace Drt.Csv
         private ToestandsFunctie ProcesRegel()
         {
             _delimPos = -1;
-            _cells = null;
 
             // Test voor einde van de file
             if (_reader.EndOfStream)
+            {
+                _cells = null;
                 return EindeRegel;
+            }
 
             // Lees de volgende regel
             _currLine = _reader.ReadLine();
@@ -96,6 +98,7 @@ namespace Drt.Csv
                     return ProcesRegel;  // ga door naar de volgende regel
 
                 case EmptyLineBehavior.EndOfFile:
+                    _cells = null;
                     return EindeRegel;
             }
 
@@ -209,7 +212,6 @@ namespace Drt.Csv
         }
 
         #endregion
-
 
         public void Dispose()
         {
