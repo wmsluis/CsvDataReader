@@ -111,13 +111,15 @@ namespace Drt.Csv
             Debug.Assert(_cells != null);
             Debug.Assert(_currLine != null && _currLine.Length > 0);
 
-            // _currpos = -1, zit op een delimiter, of line length
+            Debug.Assert(
+                _currPos == -1 ||
+                _currPos == _currLine.Length ||
+                _currLine[_currPos] == Delimiter
+                );
 
             // Break if we reached the end of the line
             if (_currPos == _currLine.Length)
                 return null;
-
-            Debug.Assert(_currPos == -1 || _currLine[_currPos] == Delimiter);
 
             _currPos++;
 
