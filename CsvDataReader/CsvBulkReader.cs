@@ -24,7 +24,7 @@ namespace Drt.Csv
         /// <summary>
         /// Een lezer van csv files, geschikt voor bulkimport.
         /// </summary>
-        /// <param name="emptyValue">Indien een veldwaarde in de csv file een lege string is, rapporteer dan in de plaats hiervan deze waarde. 
+        /// <param name="emptyValue">Indien een veldwaarde in de csv file een lege string is, rapporteer dan in de plaats hiervan deze waarde.
         /// Voor bulk import is dit typisch gesproken null (default).</param>
         public CsvBulkReader(CsvFileReader csvFileReader, string emptyValue = null)
         {
@@ -32,7 +32,8 @@ namespace Drt.Csv
             _empytValue = emptyValue;
 
             _csvFileReader = csvFileReader;
-            _headers = _csvFileReader.ReadRow();
+            _csvFileReader.ReadRow();
+            _headers = _csvFileReader.Values();
         }
 
         /// <summary>
@@ -48,8 +49,10 @@ namespace Drt.Csv
 
         public bool Read()
         {
-            _currentRow = _csvFileReader.ReadRow();
-            if (_currentRow == null) return false;
+            if (!_csvFileReader.ReadRow())
+                return false;
+
+            _currentRow = _csvFileReader.Values();
 
             if (_constantValues.Count > 0)
                 _currentRow.AddRange(_constantValues);
@@ -114,7 +117,7 @@ namespace Drt.Csv
         #region IDataRecord
         public string GetDataTypeName(int i)
         {
-            // niet echt geimplementeerd voor andere types dan string ... 
+            // niet echt geimplementeerd voor andere types dan string ...
             return "string";
         }
 

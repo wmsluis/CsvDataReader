@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Drt.Csv
 {
@@ -33,14 +31,14 @@ namespace Drt.Csv
         }
 
         /// <summary>
-        /// Writes a row of columns to the current CSV file.
+        /// Writes a row of cells to the current CSV file.
         /// </summary>
-        /// <param name="columns">The list of columns to write</param>
-        public void WriteRow(List<string> columns)
+        /// <param name="cells">The list of cells to write</param>
+        public void WriteRow(List<string> cells)
         {
             // Verify required argument
-            if (columns == null)
-                throw new ArgumentNullException("columns");
+            if (cells == null)
+                throw new ArgumentNullException("cells");
 
             // Ensure we're using current quote character
             if (OneQuote == null || OneQuote[0] != Quote)
@@ -50,17 +48,17 @@ namespace Drt.Csv
                 QuotedFormat = String.Format("{0}{{0}}{0}", Quote);
             }
 
-            // Write each column
-            for (int i = 0; i < columns.Count; i++)
+            // Write each cells
+            for (int i = 0; i < cells.Count; i++)
             {
-                // Add delimiter if this isn't the first column
+                // Add delimiter if this isn't the first cell
                 if (i > 0)
                     _writer.Write(Delimiter);
-                // Write this column
-                if (columns[i].IndexOfAny(SpecialChars) == -1)
-                    _writer.Write(columns[i]);
+                // Write this cell
+                if (cells[i].IndexOfAny(SpecialChars) == -1)
+                    _writer.Write(cells[i]);
                 else
-                    _writer.Write(QuotedFormat, columns[i].Replace(OneQuote, TwoQuotes));
+                    _writer.Write(QuotedFormat, cells[i].Replace(OneQuote, TwoQuotes));
             }
             _writer.WriteLine();
         }

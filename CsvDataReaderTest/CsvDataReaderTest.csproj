@@ -59,6 +59,7 @@
   <ItemGroup>
     <Compile Include="CsvFileReaderTest.cs" />
     <Compile Include="CsvBulkReaderTest.cs" />
+    <Compile Include="CsvFileWriterTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -68,18 +69,19 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Testdata\Comma.csv" />
-    <None Include="Testdata\Empty.csv" />
-    <None Include="Testdata\LineTooLong.csv" />
-    <None Include="Testdata\LineTooShort.csv" />
-    <None Include="Testdata\Move.csv" />
-    <None Include="Testdata\OnlyHeader.csv" />
-    <None Include="Testdata\Multiline.csv" />
-    <None Include="Testdata\EmptyLine.csv" />
-    <None Include="Testdata\BadSingleQuote.csv" />
-    <None Include="Testdata\Simple.csv" />
-    <None Include="Testdata\SomeEmptyValues.csv" />
-    <None Include="Testdata\Tab.csv" />
+    <None Include="Testdata\CsvReader\Comma.csv" />
+    <None Include="Testdata\CsvReader\Empty.csv" />
+    <None Include="Testdata\CsvReader\LineTooLong.csv" />
+    <None Include="Testdata\CsvReader\LineTooShort.csv" />
+    <None Include="Testdata\CsvReader\Move.csv" />
+    <None Include="Testdata\CsvReader\OnlyHeader.csv" />
+    <None Include="Testdata\CsvReader\Multiline.csv" />
+    <None Include="Testdata\CsvReader\EmptyLine.csv" />
+    <None Include="Testdata\CsvReader\BadSingleQuote.csv" />
+    <None Include="Testdata\CsvReader\Simple.csv" />
+    <None Include="Testdata\CsvReader\SomeEmptyCells.csv" />
+    <None Include="Testdata\CsvReader\SomeEmptyValues.csv" />
+    <None Include="Testdata\CsvReader\Tab.csv" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
