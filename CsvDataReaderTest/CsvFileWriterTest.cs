@@ -8,6 +8,7 @@ using System.IO;
 namespace Drt.Business.Test
 {
     [TestClass]
+    [DeploymentItem(@"..\..\Testdata")]
     public class CsvFileWriterTest
     {
         private List<List<string>> ReadAllRows(string path)
