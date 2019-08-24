@@ -7,79 +7,90 @@ using System.Text;
 namespace Drt.Csv
 {
     /// <summary>
-    /// Class for reading from comma-separated-value (CSV) files
+    /// Class voor het lezen van comma-separated-value (CSV) files
     /// </summary>
     public class CsvFileReader : CsvFileCommon, IDisposable
     {
-        private bool _disposed = false;
+        private delegate ToestandsFunctie ToestandsFunctie();
 
+        private bool _disposed = false;
         private readonly StreamReader _reader;
         private readonly EmptyLineBehavior _emptyLineBehavior;
 
         // data betreffende de toestand
-        private delegate ToestandsFunctie ToestandsFunctie();
         private string _currLine;
         private int _delimPos;
         private List<string> _values;
+        private bool _return;
 
         /// <summary>
         /// Class voor het lezen van csv files volgens RFC 4180.
         /// Csv file regels worden in cellen opgebroken en teruggegeven.
         /// We doen niet aan datatype conversies: alle velden zijn van type string.
         /// Een eventuele header regel wordt niet anders anders behandeld dan de rest van de csv file.
-        /// Tekstvelden mogen tussen een quote karakter gezet worden, codeer een quote karakter daarbinnen met behulp van twee quotes achter elkaar.
+        /// Tekstvelden mogen tussen een quote karakter gezet worden, 
+        /// codeer een quote karakter daarbinnen met behulp van twee quotes achter elkaar.
         /// </summary>
         /// <param name="stream">De invoer stream, zorg zelf voor de juiste encoding en eventuele buffering</param>
         /// <param name="fieldDelimiter">Typisch gesproken een puntkomma, een komma of een tab </param>
-        /// <param name="quote">Wordt gebruikt om een tekstveld mee te omgeven, zodat speciale karakters gewoon als tekst worden geinterpretterd.</param>
-        /// <param name="emptyLineBehavior">Bepaalt hoe je met lege regels in de invoer moet omgaan</param>
-        public CsvFileReader(StreamReader stream, char fieldDelimiter = ';', char quote = '"', EmptyLineBehavior emptyLineBehavior = EmptyLineBehavior.NoCells) :
-            base(fieldDelimiter, quote)
+        /// <param name="quote">Tekstvelden kunnen tussen quotes zitten, om
+        /// zodat speciale karakters als gewone tekst wordt verwerkt.</param>
+        /// <param name="emptyLineBehavior">Bepaal hoe je met lege regels in de invoer om wilt gaan</param>
+        public CsvFileReader(StreamReader stream, char fieldDelimiter = ';', char quote = '"',
+            EmptyLineBehavior emptyLineBehavior = EmptyLineBehavior.NoCells)
+            : base(fieldDelimiter, quote)
         {
             _reader = stream;
             _emptyLineBehavior = emptyLineBehavior;
         }
 
         /// <summary>
-        /// Lees een regel van de stream en breek deze op in cellen die we teruggeven.
+        /// Lees een regel van de stream en breek deze op in cellen die we teruggeven in een lijst.
         /// </summary>
         /// <returns>true zolang we nog niet aan het einde zijn, anders false</returns>
         public bool ReadRow()
         {
             ToestandsFunctie toestand = ProcesRegel;
-            while (toestand != EindeRegel)
+            while (toestand != Klaar)
             {
-                // Roep de functie aan waar toestand pointer naar wijst.
+                // Roep de functie aan waar de toestand pointer naar wijst.
                 // De return waarde van die functie call bepaalt de nieuwe toestand.
                 toestand = toestand();
             }
 
-            return _values != null;
+            return _return;
         }
 
-        public List<string> Values()
-        {
-            return _values;
-        }
-
-        #region Deze functies beschrijven ook een toestand van het parsen van een regel weer
+        #region Deze functies beschrijven een toestand en parsen ook een gedeelte van een regel.
         private ToestandsFunctie ProcesRegel()
         {
             _delimPos = -1;
 
-            // Test voor einde van de file
             if (_reader.EndOfStream)
-            {
-                _values = null;
-                return EindeRegel;
-            }
+                return EindeFile;
 
-            // Lees de volgende regel
+            return LeesRegel;
+        }
+
+        private ToestandsFunctie EindeFile()
+        {
+            _return = false;
+            _values = null;
+            return Klaar;
+        }
+
+        private ToestandsFunctie Klaar()
+        {
+            return null;
+        }
+
+        private ToestandsFunctie LeesRegel()
+        {
             _currLine = _reader.ReadLine();
+            _values = new List<string>();
+
             if (_currLine.Length == 0)
                 return ProcesLegeRegel;
-
-            _values = new List<string>();
 
             // Lees de cellen nu één voor één.
             return LeesCel;
@@ -87,31 +98,22 @@ namespace Drt.Csv
 
         private ToestandsFunctie ProcesLegeRegel()
         {
-            switch (_emptyLineBehavior)
-            {
-                case EmptyLineBehavior.NoCells:
-                    _values = new List<string>();
-                    return EindeRegel;
+            if (_emptyLineBehavior == EmptyLineBehavior.EndOfFile)
+                return EindeFile;
 
-                case EmptyLineBehavior.EmptyCell:
-                    _values = new List<string> { string.Empty };
-                    return EindeRegel;
+            if (_emptyLineBehavior == EmptyLineBehavior.Ignore)
+                return ProcesRegel;  // ga door naar de volgende regel
 
-                case EmptyLineBehavior.Ignore:
-                    return ProcesRegel;  // ga door naar de volgende regel
+            if (_emptyLineBehavior == EmptyLineBehavior.EmptyCell)
+                _values.Add(string.Empty);
 
-                case EmptyLineBehavior.EndOfFile:
-                    _values = null;
-                    return EindeRegel;
-            }
-
-            throw new InvalidProgramException("Hier mogen we nooit komen");
+            return EindeRegel;
         }
 
-        // Deze functie wordt nooit aangeroepen, toch is hij nodig ... :-)
         private ToestandsFunctie EindeRegel()
         {
-            throw new InvalidProgramException("Hier mogen we nooit komen");
+            _return = true;
+            return Klaar;
         }
 
         private ToestandsFunctie LeesCel()
@@ -210,6 +212,11 @@ namespace Drt.Csv
         }
 
         #endregion
+
+        public List<string> Values()
+        {
+            return _values;
+        }
 
         /// <summary>
         /// Stukje _currLine vanaf start tot eind (exclusief)

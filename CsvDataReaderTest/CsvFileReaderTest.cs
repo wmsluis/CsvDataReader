@@ -64,6 +64,7 @@ namespace Drt.Business.Test
 
             bool ok4 = fr.ReadRow();
             Assert.IsFalse(ok4, "er is geen rij 4");
+            Assert.IsNull(fr.Values());
 
             fr.Dispose();
         }
@@ -258,7 +259,8 @@ namespace Drt.Business.Test
 
                 // Rij 2 is leeg, wordt overgeslagen
 
-                fr.ReadRow(); // rij3
+                bool ok = fr.ReadRow(); // rij3
+                Assert.IsTrue(ok);
                 var values = fr.Values();
                 Assert.IsNotNull(values);
                 CollectionAssert.AreEqual(new List<string> { "Row3A", "Row3B", "Row3C" }, values);
@@ -274,8 +276,9 @@ namespace Drt.Business.Test
                 fr.ReadRow();  // header
                 fr.ReadRow();  // rij 1
 
-                // Rij 2 is leeg, geef een lege regel terug
-                fr.ReadRow();
+                // Rij 2 is leeg, geef een lege collectie cellen terug
+                bool ok = fr.ReadRow();
+                Assert.IsTrue(ok);
                 var values = fr.Values();
                 CollectionAssert.AreEqual(new List<string> { }, values);
 
@@ -296,7 +299,8 @@ namespace Drt.Business.Test
                 fr.ReadRow();  // rij 1
 
                 // Rij 2 is leeg, geef een enkele cell terug met lege string
-                fr.ReadRow();
+                bool ok = fr.ReadRow();
+                Assert.IsTrue(ok);
                 var values = fr.Values();
                 CollectionAssert.AreEqual(new List<string> { string.Empty }, values);
 
@@ -319,7 +323,9 @@ namespace Drt.Business.Test
 
                 // Rij 2 is leeg, lees niet verder
 
-                fr.ReadRow(); // rij3
+                bool ok = fr.ReadRow(); // rij 3
+                Assert.IsFalse(ok);
+
                 var values = fr.Values();
                 Assert.IsNull(values);
             }
